@@ -26,6 +26,7 @@ public sealed class MultiTextFieldSettingsDriver : ContentPartFieldDefinitionDis
 
             model.Required = settings.Required;
             model.Hint = settings.Hint;
+            model.DisplayFieldNameLabel = settings.DisplayFieldNameLabel;
             model.Options = JConvert.SerializeObject(settings.Options, JOptions.Indented);
         }).Location("Content");
     }
@@ -39,6 +40,7 @@ public sealed class MultiTextFieldSettingsDriver : ContentPartFieldDefinitionDis
 
         settings.Required = model.Required;
         settings.Hint = model.Hint;
+        settings.DisplayFieldNameLabel = model.DisplayFieldNameLabel;
 
         try
         {
