@@ -39,6 +39,7 @@ public sealed class MediaFieldSettingsDriver : ContentPartFieldDefinitionDisplay
             model.Multiple = settings.Multiple;
             model.AllowMediaText = settings.AllowMediaText;
             model.AllowAnchors = settings.AllowAnchors;
+            model.DisplayFieldName = settings.DisplayFieldName;
             model.AllowAllDefaultMediaTypes = settings.AllowedExtensions == null || settings.AllowedExtensions.Length == 0;
 
             var items = new List<MediaTypeViewModel>();
@@ -80,6 +81,7 @@ public sealed class MediaFieldSettingsDriver : ContentPartFieldDefinitionDisplay
             Multiple = model.Multiple,
             AllowMediaText = model.AllowMediaText,
             AllowAnchors = model.AllowAnchors,
+            DisplayFieldName = model.DisplayFieldName,
         };
 
         if (!model.AllowAllDefaultMediaTypes)

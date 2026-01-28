@@ -1,16 +1,22 @@
 @model OrchardCore.Media.ViewModels.DisplayMediaFieldViewModel
 @using OrchardCore.ContentManagement.Metadata.Models
+@using OrchardCore.Media.Settings
 @using OrchardCore.Mvc.Utilities
 @{
-    var paths = Model.Paths ?? Array.Empty<string>();
-    var mediaTexts = Model.Field?.MediaTexts ?? Array.Empty<string>();
-    var name = (Model.PartFieldDefinition.PartDefinition.Name + "-" + Model.PartFieldDefinition.Name).HtmlClassify();
+	var paths = Model.Paths ?? Array.Empty<string>();
+	var mediaTexts = Model.Field?.MediaTexts ?? Array.Empty<string>();
+	var name = (Model.PartFieldDefinition.PartDefinition.Name + "-" + Model.PartFieldDefinition.Name).HtmlClassify();
+	var settings = Model.PartFieldDefinition.GetSettings<MediaFieldSettings>();
 }
 @if (paths.Length > 0)
 {
     <div class="field field-type-mediafield field-name-@name">
-        <span class="name">@Model.PartFieldDefinition.DisplayName()</span>
-        @for (int i = 0; i < paths.Length; i++)
+        @if(settings.DisplayFieldName)
+		{
+			<span class="name">@Model.PartFieldDefinition.DisplayName()</span>
+		}
+
+		@for (int i = 0; i < paths.Length; i++)
         {
             var path = paths[i];
             var url = Orchard.AssetUrl(path);

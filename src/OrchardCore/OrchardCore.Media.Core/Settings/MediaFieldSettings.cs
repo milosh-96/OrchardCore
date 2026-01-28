@@ -13,5 +13,8 @@ public class MediaFieldSettings : FieldSettings
 
     public bool AllowAnchors { get; set; }
 
+    [DefaultValue(true)]
+    public bool DisplayFieldName { get; set; } = true;
+
     public string[] AllowedExtensions { get; set; } = [];
 }

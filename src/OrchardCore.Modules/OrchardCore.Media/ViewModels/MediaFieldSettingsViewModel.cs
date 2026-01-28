@@ -14,5 +14,7 @@ public class MediaFieldSettingsViewModel
 
     public bool AllowAllDefaultMediaTypes { get; set; }
 
+    public bool DisplayFieldName { get; set;  }
+
     public MediaTypeViewModel[] MediaTypes { get; set; }
 }

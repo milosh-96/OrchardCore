@@ -29,6 +29,13 @@
     </div>
 </div>
 <div class="mb-3">
+    <div class="form-check">
+        <input type="checkbox" class="form-check-input" asp-for="DisplayFieldName" checked="@Model.DisplayFieldName">
+        <label class="form-check-label" asp-for="DisplayFieldName">@T["Display field name"]</label>
+        <span class="hint dashed">@T["Whether the name of the field is displayed publicly."]</span>
+    </div>
+</div>
+<div class="mb-3">
     <div class="w-lg-75 w-xl-50">
         <label asp-for="Hint" class="form-label">@T["Hint"]</label>
         <input asp-for="Hint" type="text" class="form-control" />
