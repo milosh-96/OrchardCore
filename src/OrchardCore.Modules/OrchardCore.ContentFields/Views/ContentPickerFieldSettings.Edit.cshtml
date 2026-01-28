@@ -27,6 +27,14 @@
 </div>
 
 <div class="mb-3">
+	<div class="form-check">
+		<input type="checkbox" class="form-check-input" asp-for="DisplayFieldNameLabel" checked="@Model.DisplayFieldNameLabel">
+		<label class="form-check-label" asp-for="DisplayFieldNameLabel">@T["Display field name label"]</label>
+		<span class="hint dashed">@T["Show the field name above the content on the site."]</span>
+	</div>
+</div>
+
+<div class="mb-3">
     <label asp-for="Source" class="form-label">@T["Contained Content Types"]</label>
     <div class="w-sm-50" id="@Html.IdFor(x => x.Source)">
         <div class="form-check">

@@ -1,3 +1,5 @@
+using System.ComponentModel;
+
 namespace OrchardCore.ContentFields.Settings;
 
 public class ContentPickerFieldSettingsViewModel
@@ -17,4 +19,6 @@ public class ContentPickerFieldSettingsViewModel
     public string TitlePattern { get; set; } = "{{ Model.ContentItem.DisplayText }}";
 
     public string Placeholder { get; set; } = string.Empty;
+
+    public bool DisplayFieldNameLabel { get; set; }
 }
