@@ -4,10 +4,15 @@
 @{
     var name = (Model.PartFieldDefinition.PartDefinition.Name + "-" + Model.PartFieldDefinition.Name).HtmlClassify();
     var users = await @Orchard.GetUsersByIdsAsync(Model.UserIds);
+    var settings = Model.PartFieldDefinition.GetSettings<UserPickerFieldSettings>();
 }
 
 <div class="field field-type-userpickerfield field-name-@name">
-    <span class="name">@Model.PartFieldDefinition.DisplayName()</span>
+    @if (settings.DisplayFieldNameLabel)
+    {
+        <span class="name">@Model.PartFieldDefinition.DisplayName()</span>
+    }
+
     @if (users.Any())
     {
         foreach (var user in users)
