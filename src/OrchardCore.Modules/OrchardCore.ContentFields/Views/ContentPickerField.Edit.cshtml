@@ -55,7 +55,7 @@
                                  :disabled="isDisabled"
                                  select-label="@T["Select"]" deselect-label="@T["Remove"]">
                     <template slot="option" slot-scope="props">
-                        <div v-cloak><span>{{ props.option.displayText }}</span> <span v-if="props.option.culture != null">{{"(" + props.option.culture + ")"}}</span> <span class="small ms-2" v-show="!props.option.hasPublished">(@T["Not published"])</span></div>
+                        <div v-cloak><span>{{ props.option.displayText }}</span> <span class="ms-1 text-muted" v-if="props.option.culture != null">{{"(" + props.option.culture + ")"}}</span> <span class="small ms-2" v-show="!props.option.hasPublished">(@T["Not published"])</span></div>
                     </template>
                     <template slot="noResult">
                         @T["No result found"]
