@@ -94,9 +94,9 @@ public sealed class ContentPickerAdminController : Controller
             {
                 Id = contentItem.ContentItemId,
                 DisplayText = contentItem.ToString(),
+                Culture = contentItem.Content.LocalizationPart?.Culture,
                 HasPublished = contentItem.IsPublished(),
                 IsViewable = await _authorizationService.AuthorizeAsync(user, CommonPermissions.EditContent, contentItem),
-                Culture = contentItem.Content.LocalizationPart?.Culture,
             });
         }
 
