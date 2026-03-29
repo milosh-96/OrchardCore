@@ -1,12 +1,16 @@
+using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using OrchardCore.ContentManagement;
+using OrchardCore.Contents;
 using OrchardCore.DisplayManagement;
 using OrchardCore.DisplayManagement.Descriptors;
 using OrchardCore.DisplayManagement.Shapes;
-using OrchardCore.DisplayManagement.Utilities;
 using OrchardCore.Menu.Models;
 using OrchardCore.Mvc.Utilities;
+using OrchardCore.Security.Permissions;
 
 namespace OrchardCore.Menu;
 
@@ -62,8 +66,9 @@ public class MenuShapes : ShapeTableProvider
 
                 if (!string.IsNullOrEmpty(differentiator))
                 {
-                    // Menu__[MenuName] e.g. Menu-MainMenu
-                    menu.Metadata.Alternates.Add("Menu__" + differentiator);
+                    // Get cached alternate and add it efficiently
+                    var cachedAlternates = MenuAlternatesFactory.GetMenuAlternates(differentiator);
+                    menu.Metadata.Alternates.AddRange(cachedAlternates);
                     menu.Metadata.Differentiator = differentiator;
                     menu.Classes.Add(("menu-" + differentiator).HtmlClassify());
                 }
@@ -71,13 +76,22 @@ public class MenuShapes : ShapeTableProvider
                 // The first level of menu item shapes is created.
                 // Each other level is created when the menu item is displayed.
 
+                var permissionService = context.ServiceProvider.GetRequiredService<IPermissionService>();
+                var httpContextAccessor = context.ServiceProvider.GetRequiredService<IHttpContextAccessor>();
+                var authorizationService = context.ServiceProvider.GetRequiredService<IAuthorizationService>();
+
                 foreach (var contentItem in menuItems)
                 {
-                    var shape = await shapeFactory.CreateAsync("MenuItem", Arguments.From(new
+                    if (!await ShouldCreateAsync(contentItem, contentManager, permissionService, authorizationService, httpContextAccessor.HttpContext?.User))
+                    {
+                        continue;
+                    }
+
+                    var shape = await shapeFactory.CreateAsync("MenuItem", Arguments.From(new MenuItemArguments
                     {
                         ContentItem = contentItem,
                         Level = 0,
-                        Menu = menu
+                        Menu = menu,
                     }));
 
                     shape.Metadata.Differentiator = differentiator;
@@ -102,13 +116,23 @@ public class MenuShapes : ShapeTableProvider
 
                 if (menuItems != null)
                 {
+                    var permissionService = context.ServiceProvider.GetRequiredService<IPermissionService>();
+                    var httpContextAccessor = context.ServiceProvider.GetRequiredService<IHttpContextAccessor>();
+                    var authorizationService = context.ServiceProvider.GetRequiredService<IAuthorizationService>();
+                    var contentManager = context.ServiceProvider.GetRequiredService<IContentManager>();
+
                     foreach (var contentItem in menuItems)
                     {
-                        var shape = await shapeFactory.CreateAsync("MenuItem", Arguments.From(new
+                        if (!await ShouldCreateAsync(contentItem, contentManager, permissionService, authorizationService, httpContextAccessor.HttpContext?.User))
+                        {
+                            continue;
+                        }
+
+                        var shape = await shapeFactory.CreateAsync("MenuItem", Arguments.From(new MenuItemArguments
                         {
                             ContentItem = contentItem,
                             Level = level + 1,
-                            Menu = menu
+                            Menu = menu,
                         }));
 
                         shape.Metadata.Differentiator = differentiator;
@@ -118,28 +142,13 @@ public class MenuShapes : ShapeTableProvider
                     }
                 }
 
-                var encodedContentType = menuContentItem.ContentItem.ContentType.EncodeAlternateElement();
+                // Get cached alternates and add them efficiently
+                var cachedAlternates = MenuItemAlternatesFactory.GetMenuItemAlternates(
+                    menuContentItem.ContentItem.ContentType,
+                    differentiator,
+                    level);
 
-                // MenuItem__level__[level] e.g. MenuItem-level-2
-                menuItem.Metadata.Alternates.Add("MenuItem__level__" + level);
-
-                // MenuItem__[ContentType] e.g. MenuItem-HtmlMenuItem
-                // MenuItem__[ContentType]__level__[level] e.g. MenuItem-HtmlMenuItem-level-2
-                menuItem.Metadata.Alternates.Add("MenuItem__" + encodedContentType);
-                menuItem.Metadata.Alternates.Add("MenuItem__" + encodedContentType + "__level__" + level);
-
-                if (!string.IsNullOrEmpty(differentiator))
-                {
-                    // MenuItem__[MenuName] e.g. MenuItem-MainMenu
-                    // MenuItem__[MenuName]__level__[level] e.g. MenuItem-MainMenu-level-2
-                    menuItem.Metadata.Alternates.Add("MenuItem__" + differentiator);
-                    menuItem.Metadata.Alternates.Add("MenuItem__" + differentiator + "__level__" + level);
-
-                    // MenuItem__[MenuName]__[ContentType] e.g. MenuItem-MainMenu-HtmlMenuItem
-                    // MenuItem__[MenuName]__[ContentType]__level__[level] e.g. MenuItem-MainMenu-HtmlMenuItem-level-2
-                    menuItem.Metadata.Alternates.Add("MenuItem__" + differentiator + "__" + encodedContentType);
-                    menuItem.Metadata.Alternates.Add("MenuItem__" + differentiator + "__" + encodedContentType + "__level__" + level);
-                }
+                menuItem.Metadata.Alternates.AddRange(cachedAlternates);
             });
 
         builder.Describe("MenuItemLink")
@@ -151,32 +160,71 @@ public class MenuShapes : ShapeTableProvider
 
                 var menuContentItem = menuItem.GetProperty<ContentItem>("ContentItem");
 
-                var encodedContentType = menuContentItem.ContentItem.ContentType.EncodeAlternateElement();
+                // Get cached alternates and add them efficiently
+                var cachedAlternates = MenuItemAlternatesFactory.GetMenuItemLinkAlternates(
+                    menuContentItem.ContentItem.ContentType,
+                    differentiator,
+                    level);
 
-                menuItem.Metadata.Alternates.Add("MenuItemLink__level__" + level);
-
-                // MenuItemLink__[ContentType] e.g. MenuItemLink-HtmlMenuItem
-                // MenuItemLink__[ContentType]__level__[level] e.g. MenuItemLink-HtmlMenuItem-level-2
-                menuItem.Metadata.Alternates.Add("MenuItemLink__" + encodedContentType);
-                menuItem.Metadata.Alternates.Add("MenuItemLink__" + encodedContentType + "__level__" + level);
-
-                if (!string.IsNullOrEmpty(differentiator))
-                {
-                    // MenuItemLink__[MenuName] e.g. MenuItemLink-MainMenu
-                    // MenuItemLink__[MenuName]__level__[level] e.g. MenuItemLink-MainMenu-level-2
-                    menuItem.Metadata.Alternates.Add("MenuItemLink__" + differentiator);
-                    menuItem.Metadata.Alternates.Add("MenuItemLink__" + differentiator + "__level__" + level);
-
-                    // MenuItemLink__[MenuName]__[ContentType] e.g. MenuItemLink-MainMenu-HtmlMenuItem
-                    // MenuItemLink__[MenuName]__[ContentType] e.g. MenuItemLink-MainMenu-HtmlMenuItem-level-2
-                    menuItem.Metadata.Alternates.Add("MenuItemLink__" + differentiator + "__" + encodedContentType);
-                    menuItem.Metadata.Alternates.Add("MenuItemLink__" + differentiator + "__" + encodedContentType + "__level__" + level);
-                }
+                menuItem.Metadata.Alternates.AddRange(cachedAlternates);
             });
 
         return ValueTask.CompletedTask;
     }
 
+    private async static Task<bool> ShouldCreateAsync(
+        ContentItem contentItem,
+        IContentManager contentManager,
+        IPermissionService permissionService,
+        IAuthorizationService authorizationService,
+        ClaimsPrincipal user)
+    {
+        if (contentItem.TryGet<MenuItemPermissionPart>(out var permissionPart) &&
+            permissionPart.PermissionNames is not null &&
+            permissionPart.PermissionNames.Length > 0)
+        {
+            var permissions = await permissionService.FindByNamesAsync(permissionPart.PermissionNames);
+
+            foreach (var permission in permissions)
+            {
+                if (await authorizationService.AuthorizeAsync(user, permission, contentItem))
+                {
+                    continue;
+                }
+
+                return false;
+            }
+        }
+
+        if (contentItem.TryGet<ContentMenuItemPart>(out var menuItemPart))
+        {
+            string contentItemId = menuItemPart.ContentItem.Content.ContentMenuItemPart.SelectedContentItem.ContentItemIds[0];
+
+            if (string.IsNullOrEmpty(contentItemId))
+            {
+                return false;
+            }
+
+            if (menuItemPart.CheckContentPermissions)
+            {
+                var displayItem = await contentManager.GetAsync(contentItemId, VersionOptions.Published);
+
+                if (displayItem is null)
+                {
+                    return false;
+                }
+
+                await contentManager.LoadAsync(displayItem);
+
+                if (!await authorizationService.AuthorizeAsync(user, CommonPermissions.ViewContent, displayItem))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
     /// <summary>
     /// Converts "foo-ba r" to "FooBaR".
     /// </summary>
@@ -214,4 +262,12 @@ public class MenuShapes : ShapeTableProvider
 
         return result.ToString();
     }
+}
+
+[GenerateArguments]
+internal sealed partial class MenuItemArguments
+{
+    public ContentItem ContentItem { get; set; }
+    public int Level { get; set; }
+    public IShape Menu { get; set; }
 }

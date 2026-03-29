@@ -1,15 +1,16 @@
 using OrchardCore.Security.Permissions;
 
-namespace OrchardCore.Email.Core;
+namespace OrchardCore.Email;
 
 public sealed class Permissions : IPermissionProvider
 {
-    public static readonly Permission ManageEmailSettings = new("ManageEmailSettings", "Manage Email Settings");
-
     private readonly IEnumerable<Permission> _allPermissions =
     [
-        ManageEmailSettings,
+        EmailPermissions.ManageEmailSettings,
     ];
+
+    [Obsolete("This will be removed in a future release. Instead use 'EmailPermissions.ManageEmailSettings'.")]
+    public static readonly Permission ManageEmailSettings = EmailPermissions.ManageEmailSettings;
 
     public Task<IEnumerable<Permission>> GetPermissionsAsync()
         => Task.FromResult(_allPermissions);

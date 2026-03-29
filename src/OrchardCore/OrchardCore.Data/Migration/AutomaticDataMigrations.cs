@@ -8,7 +8,7 @@ namespace OrchardCore.Data.Migration;
 /// <summary>
 /// Represents a tenant event that will be registered to OrchardShell.Activated in order to run migrations automatically.
 /// </summary>
-public class AutomaticDataMigrations : ModularTenantEvents
+public sealed class AutomaticDataMigrations : ModularTenantEvents
 {
     private readonly ShellSettings _shellSettings;
     private readonly ILogger _logger;
@@ -35,7 +35,10 @@ public class AutomaticDataMigrations : ModularTenantEvents
     {
         if (!_shellSettings.IsUninitialized())
         {
-            _logger.LogDebug("Executing data migrations for shell '{Name}'", _shellSettings.Name);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Executing data migrations for shell '{Name}'", _shellSettings.Name);
+            }
 
             var dataMigrationManager = _serviceProvider.GetService<IDataMigrationManager>();
             return dataMigrationManager.UpdateAllFeaturesAsync();

@@ -12,19 +12,28 @@ public class RecentBlogPostsQueryTests
         using var context = new BlogContext();
         await context.InitializeAsync();
 
+        // Indexing of the content item happens in the deferred-task and may not be immediate available,
+        // so we wait until the indexing is done before querying.
+        await context.WaitForDeferredTasksAsync(TestContext.Current.CancellationToken);
+        await context.WaitForHttpBackgroundJobsAsync(TestContext.Current.CancellationToken);
+
         var blogPostContentItemId = await context
             .CreateContentItem("BlogPost", builder =>
             {
                 builder.Published = true;
                 builder.Latest = true;
-                builder.DisplayText = "Some sorta blogpost in a Query!";
+                builder.DisplayText = "Some sort of blogpost in a Query!";
 
                 builder
                     .Weld(new ContainedPart
                     {
-                        ListContentItemId = context.BlogContentItemId
+                        ListContentItemId = context.BlogContentItemId,
                     });
             });
+
+        // Indexing of the content item happens in the deferred-task and may not be immediate available,
+        // so we wait until the indexing is done before querying.
+        await context.WaitForDeferredTasksAsync(TestContext.Current.CancellationToken);
 
         var result = await context
             .GraphQLClient
@@ -32,7 +41,8 @@ public class RecentBlogPostsQueryTests
             .Query("RecentBlogPosts", builder =>
             {
                 builder
-                    .WithField("displayText");
+                    .WithField("displayText")
+                    .WithField("contentItemId");
             });
 
         var jsonArray = result["data"]?["recentBlogPosts"]?.AsArray();
@@ -46,7 +56,9 @@ public class RecentBlogPostsQueryTests
         // of the result.
         var displayTexts = jsonArray.Select(node => node["displayText"]?.ToString());
 
-        Assert.Contains("Some sorta blogpost in a Query!", displayTexts);
+        Assert.Contains("Some sort of blogpost in a Query!", displayTexts);
+
+        // This is the blog post created by the default blog recipe.
         Assert.Contains("Man must explore, and this is exploration at its greatest", displayTexts);
     }
 }

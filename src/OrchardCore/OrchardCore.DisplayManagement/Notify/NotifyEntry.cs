@@ -10,10 +10,11 @@ public enum NotifyType
     Success,
     Information,
     Warning,
-    Error
+    Error,
 }
 
-public class NotifyEntry
+[GenerateArguments]
+public partial class NotifyEntry
 {
     private (HtmlEncoder HtmlEncoder, string Message) _cache;
 

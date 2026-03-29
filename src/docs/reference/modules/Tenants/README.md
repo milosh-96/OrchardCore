@@ -29,7 +29,7 @@ This feature allows the `Default` tenant to create Feature Profiles which can re
 ### Creating a feature profile
 
 1. Enable the _Tenant Feature Profiles_ feature on the `Default` tenant.
-2. Go to the _Configuration -> Tenant Feature Profiles_ menu.
+2. Go to the _Multi-Tenancy -> Feature Profiles_ menu.
 3. Select _Add Feature Profile_.
 4. Add a _Name_ and a set of _Rules_.
 
@@ -116,7 +116,7 @@ By using the `FeatureProfiles` recipe step, you can define profiles from recipes
 ### Selecting a feature profile
 
 1. Create a Feature Profile.
-2. Go to the _Configuration -> Tenants_ menu.
+2. Go to the _Multi-Tenancy -> Tenants_ menu.
 3. Edit the tenant.
 4. Select a feature profile from the dropdown.
 
@@ -130,7 +130,7 @@ If you're using [Auto Setup](../AutoSetup/README.md), you can specify the `Featu
 
 Allows removing a tenant if it is not yet set up or is in the disabled state. By default, this feature is not allowed.
 
-Tenant Removal can be allowed from any configuration source (e.g. `appsettings.json`) under the `OrchardCore` section. See the [configuration documentation](../../core/Configuration/README.md) for details.
+Tenant Removal can be allowed from any configuration source (e.g. `appsettings.json`) under the `OrchardCore` section. See the [configuration documentation](../Configuration/README.md) for details.
 
 ```json
 {

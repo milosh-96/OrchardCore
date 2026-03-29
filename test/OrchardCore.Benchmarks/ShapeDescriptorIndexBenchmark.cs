@@ -5,12 +5,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using Microsoft.Extensions.DependencyInjection;
-using OrchardCore.Benchmark.Support;
+using OrchardCore.Benchmarks.Support;
 using OrchardCore.DisplayManagement.Descriptors;
 using OrchardCore.Environment.Extensions;
 using OrchardCore.Tests.Apis.Context;
 
-namespace OrchardCore.Benchmark;
+namespace OrchardCore.Benchmarks;
 
 [MemoryDiagnoser]
 public class ShapeDescriptorIndexBenchmark
@@ -45,8 +45,21 @@ public class ShapeDescriptorIndexBenchmark
             .Select(group => new ShapeDescriptorIndex
             (
                 shapeType: group.Key,
+                alterations: group.Select(kv => kv.Value)
+            ))
+            .ToList();
+    }
+
+    [Benchmark]
+    public List<OriginalShapeDescriptorIndex> OriginalSingleLoopLists()
+    {
+        return _shapeDescriptors
+            .GroupBy(sd => sd.Value.ShapeType, StringComparer.OrdinalIgnoreCase)
+            .Select(group => new OriginalShapeDescriptorIndex
+            (
+                shapeType: group.Key,
                 alterationKeys: group.Select(kv => kv.Key),
-                descriptors: _shapeDescriptors
+                _shapeDescriptors
             ))
             .ToList();
     }

@@ -1,24 +1,47 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using OrchardCore.ContentManagement;
 using OrchardCore.ContentTypes.Deployment;
 using OrchardCore.ContentTypes.Editors;
 using OrchardCore.ContentTypes.RecipeSteps;
 using OrchardCore.ContentTypes.Services;
 using OrchardCore.Deployment;
+using OrchardCore.Environment.Shell.Configuration;
 using OrchardCore.Modules;
 using OrchardCore.Navigation;
 using OrchardCore.Recipes;
 using OrchardCore.Recipes.Events;
-using OrchardCore.ResourceManagement;
 using OrchardCore.Security.Permissions;
 
 namespace OrchardCore.ContentTypes;
 
 public sealed class Startup : StartupBase
 {
+    private readonly IShellConfiguration _shellConfiguration;
+
+    public Startup(IShellConfiguration shellConfiguration)
+    {
+        _shellConfiguration = shellConfiguration;
+    }
+
     public override void ConfigureServices(IServiceCollection services)
     {
+        services.Configure<ContentTypesOptions>(options =>
+        {
+            var configSection = _shellConfiguration.GetSection("OrchardCore_ContentTypes");
+
+            var defaultThumbnailPath = configSection.GetValue<string>("DefaultThumbnailPath");
+            if (!string.IsNullOrWhiteSpace(defaultThumbnailPath))
+            {
+                options.DefaultThumbnailPath = defaultThumbnailPath;
+            }
+            else
+            {
+                options.DefaultThumbnailPath = "~/OrchardCore.ContentTypes/placeholder.png";
+            }
+
+            options.DefaultCategory = configSection.GetValue<string>("DefaultCategory");
+        });
         services.AddPermissionProvider<Permissions>();
         services.AddNavigationProvider<AdminMenu>();
         services.AddScoped<IContentDefinitionService, ContentDefinitionService>();
@@ -37,7 +60,7 @@ public sealed class Startup : StartupBase
         services.AddRecipeExecutionStep<DeleteContentDefinitionStep>();
 
         services.AddTransient<IRecipeEventHandler, LuceneRecipeEventHandler>();
-        services.AddTransient<IConfigureOptions<ResourceManagementOptions>, ResourceManagementOptionsConfiguration>();
+        services.AddResourceConfiguration<ResourceManagementOptionsConfiguration>();
     }
 }
 

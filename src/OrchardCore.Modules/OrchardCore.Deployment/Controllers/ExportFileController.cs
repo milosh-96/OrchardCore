@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Net.Mime;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OrchardCore.Admin;
@@ -33,7 +34,7 @@ public sealed class ExportFileController : Controller
     [DeleteFileResultFilter]
     public async Task<IActionResult> Execute(long id)
     {
-        if (!await _authorizationService.AuthorizeAsync(User, CommonPermissions.Export))
+        if (!await _authorizationService.AuthorizeAsync(User, DeploymentPermissions.Export))
         {
             return Forbid();
         }
@@ -73,6 +74,6 @@ public sealed class ExportFileController : Controller
             ZipFile.CreateFromDirectory(fileBuilder.Folder, archiveFileName);
         }
 
-        return new PhysicalFileResult(archiveFileName, "application/zip") { FileDownloadName = filename };
+        return new PhysicalFileResult(archiveFileName, MediaTypeNames.Application.Zip) { FileDownloadName = filename };
     }
 }

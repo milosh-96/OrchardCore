@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Options;
 using OrchardCore.Settings;
 
-namespace OrchardCore.Email.Core.Services;
+namespace OrchardCore.Email.Services;
 
 public sealed class EmailOptionsConfiguration : IConfigureOptions<EmailOptions>
 {
@@ -36,8 +36,6 @@ public sealed class EmailOptionsConfiguration : IConfigureOptions<EmailOptions>
                 .Select(x => x.Key)
                 .LastOrDefault()
                 ?? _emailProviderOptions.Providers.Keys.Last();
-
-            return;
         }
     }
 }

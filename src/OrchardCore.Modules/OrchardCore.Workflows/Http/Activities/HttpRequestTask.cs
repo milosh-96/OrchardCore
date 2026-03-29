@@ -1,3 +1,4 @@
+using System.Net.Mime;
 using System.Text;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Http;
@@ -77,7 +78,7 @@ public class HttpRequestTask : TaskActivity<HttpRequestTask>
         { 508, "Loop Detected" },
         { 510, "Not Extended" },
         { 511, "Network Authentication Required" },
-        { 599, "Network Connect Timeout Error" }
+        { 599, "Network Connect Timeout Error" },
     };
 
     private readonly IWorkflowExpressionEvaluator _expressionEvaluator;
@@ -129,7 +130,7 @@ public class HttpRequestTask : TaskActivity<HttpRequestTask>
 
     public WorkflowExpression<string> ContentType
     {
-        get => GetProperty(() => new WorkflowExpression<string>("application/json"));
+        get => GetProperty(() => new WorkflowExpression<string>(MediaTypeNames.Application.Json));
         set => SetProperty(value);
     }
 
@@ -193,7 +194,7 @@ public class HttpRequestTask : TaskActivity<HttpRequestTask>
             Headers = response.Headers.ToDictionary(x => x.Key),
             response.StatusCode,
             response.ReasonPhrase,
-            response.IsSuccessStatusCode
+            response.IsSuccessStatusCode,
         };
 
         return Outcomes(outcome != 0 ? outcome.ToString() : "UnhandledHttpStatus");

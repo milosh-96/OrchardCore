@@ -20,11 +20,11 @@ public sealed class AddToDeploymentPlanContentDriver : ContentDisplayDriver
     {
         return CombineAsync(
                 Dynamic("AddToDeploymentPlan_Modal__ActionDeploymentPlan")
-                    .Location("SummaryAdmin", "ActionsMenu:30")
-                    .RenderWhen(async () => await _deploymentPlanService.DoesUserHavePermissionsAsync()),
+                    .Location(OrchardCoreConstants.DisplayType.SummaryAdmin, "ActionsMenu:30")
+                    .RenderWhen(() => _deploymentPlanService.DoesUserHavePermissionsAsync()),
                 Shape("AddToDeploymentPlan_SummaryAdmin__Button__Actions", new ContentItemViewModel(model))
-                    .Location("SummaryAdmin", "ActionsMenu:30")
-                    .RenderWhen(async () => await _deploymentPlanService.DoesUserHavePermissionsAsync())
+                    .Location(OrchardCoreConstants.DisplayType.SummaryAdmin, "ActionsMenu:30")
+                    .RenderWhen(() => _deploymentPlanService.DoesUserHavePermissionsAsync())
             );
     }
 }

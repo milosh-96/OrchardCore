@@ -69,7 +69,7 @@ public sealed class AdminController : Controller
 
         var shapeList = shapeTypes.Select(entry => new ShapePlacementViewModel
         {
-            ShapeType = entry.Key
+            ShapeType = entry.Key,
         }).ToList();
 
         if (!string.IsNullOrWhiteSpace(options.Search))
@@ -113,7 +113,7 @@ public sealed class AdminController : Controller
     public ActionResult IndexFilterPOST(ListShapePlacementsViewModel model)
         => RedirectToAction(nameof(Index), new RouteValueDictionary
         {
-            { _optionsSearch, model.Options.Search }
+            { _optionsSearch, model.Options.Search },
         });
 
     public async Task<IActionResult> Create(string suggestion, string returnUrl = null)
@@ -128,8 +128,8 @@ public sealed class AdminController : Controller
         var viewModel = new EditShapePlacementViewModel
         {
             Creating = true,
-            ShapeType = suggestion,
-            Nodes = JConvert.SerializeObject(template, JOptions.Indented)
+            ShapeType = suggestion?.Trim(),
+            Nodes = JConvert.SerializeObject(template, JOptions.Indented),
         };
 
         ViewData["ReturnUrl"] = returnUrl;
@@ -150,7 +150,7 @@ public sealed class AdminController : Controller
             var generatedNode = new PlacementNode
             {
                 DisplayType = displayType,
-                Differentiator = differentiator
+                Differentiator = differentiator,
             };
 
             if (!string.IsNullOrEmpty(contentType))
@@ -169,7 +169,7 @@ public sealed class AdminController : Controller
         var viewModel = new EditShapePlacementViewModel
         {
             ShapeType = shapeType,
-            Nodes = JConvert.SerializeObject(placementNodes, JOptions.Indented)
+            Nodes = JConvert.SerializeObject(placementNodes, JOptions.Indented),
         };
 
         ViewData["ReturnUrl"] = returnUrl;
@@ -186,6 +186,18 @@ public sealed class AdminController : Controller
 
         ViewData["ReturnUrl"] = returnUrl;
 
+        viewModel.ShapeType = viewModel.ShapeType?.Trim();
+
+        if (string.IsNullOrWhiteSpace(viewModel.ShapeType))
+        {
+            ModelState.AddModelError(nameof(viewModel.ShapeType), S["The Shape type can't be empty."]);
+        }
+
+        if (!ModelState.IsValid)
+        {
+            return View(viewModel);
+        }
+
         if (viewModel.Creating && await _placementsManager.GetShapePlacementsAsync(viewModel.ShapeType) != null)
         {
             // Prevent overriding existing rules on creation.
@@ -196,23 +208,24 @@ public sealed class AdminController : Controller
         try
         {
             var placementNodes = JConvert.DeserializeObject<PlacementNode[]>(viewModel.Nodes)
-                ?? Enumerable.Empty<PlacementNode>();
+                ?? Array.Empty<PlacementNode>();
 
-            // Remove empty nodes.
-            placementNodes = placementNodes.Where(node => !IsEmpty(node));
+            var emptyNodesIndexes = Array.FindAll(placementNodes, IsEmpty)
+                .Select(node => Array.IndexOf(placementNodes, node) + 1);
 
-            if (placementNodes.Any())
+            if (emptyNodesIndexes.Any())
+            {
+                await _notifier.ErrorAsync(H["A valid placement must contain either <b>place</b>, <b>shape</b>, <b>wrappers</b> or <b>alternates</b>. Please correct the placements at positions: {0}.", string.Join(", ", emptyNodesIndexes)]);
+                return View(viewModel);
+            }
+
+            if (placementNodes.Length > 0)
             {
                 // Save.
                 await _placementsManager.UpdateShapePlacementsAsync(viewModel.ShapeType, placementNodes);
                 viewModel.Creating = false;
 
                 await _notifier.SuccessAsync(H["The \"{0}\" placement have been saved.", viewModel.ShapeType]);
-            }
-            else if (viewModel.Creating)
-            {
-                await _notifier.WarningAsync(H["The \"{0}\" placement is empty.", viewModel.ShapeType]);
-                return View(viewModel);
             }
             else
             {
@@ -320,7 +333,6 @@ public sealed class AdminController : Controller
             && (node.Alternates == null || node.Alternates.Length == 0)
             && (node.Wrappers == null || node.Wrappers.Length == 0);
     }
-
 
     private static bool FilterEquals(object node, string value)
     {

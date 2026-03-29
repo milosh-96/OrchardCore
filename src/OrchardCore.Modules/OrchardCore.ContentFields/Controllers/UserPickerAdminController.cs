@@ -17,19 +17,16 @@ namespace OrchardCore.ContentFields.Controllers;
 public sealed class UserPickerAdminController : Controller
 {
     private readonly IContentDefinitionManager _contentDefinitionManager;
-    private readonly IContentManager _contentManager;
     private readonly IAuthorizationService _authorizationService;
     private readonly IEnumerable<IUserPickerResultProvider> _resultProviders;
 
     public UserPickerAdminController(
         IContentDefinitionManager contentDefinitionManager,
-        IContentManager contentManager,
         IAuthorizationService authorizationService,
         IEnumerable<IUserPickerResultProvider> resultProviders
         )
     {
         _contentDefinitionManager = contentDefinitionManager;
-        _contentManager = contentManager;
         _authorizationService = authorizationService;
         _resultProviders = resultProviders;
     }
@@ -42,10 +39,7 @@ public sealed class UserPickerAdminController : Controller
             return BadRequest("Part, field and contentType are required parameters");
         }
 
-        var contentItem = await _contentManager.NewAsync(contentType);
-        contentItem.Owner = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        if (!await _authorizationService.AuthorizeAsync(User, CommonPermissions.EditContent, contentItem))
+        if (!await _authorizationService.AuthorizeContentTypeAsync(User, CommonPermissions.EditContent, contentType, User.FindFirstValue(ClaimTypes.NameIdentifier)))
         {
             return Forbid();
         }
@@ -74,7 +68,7 @@ public sealed class UserPickerAdminController : Controller
             Query = query,
             DisplayAllUsers = fieldSettings.DisplayAllUsers,
             Roles = fieldSettings.DisplayedRoles,
-            PartFieldDefinition = partFieldDefinition
+            PartFieldDefinition = partFieldDefinition,
         });
 
         return new ObjectResult(results.Select(r => new VueMultiselectUserViewModel() { Id = r.UserId, DisplayText = r.DisplayText, IsEnabled = r.IsEnabled }));

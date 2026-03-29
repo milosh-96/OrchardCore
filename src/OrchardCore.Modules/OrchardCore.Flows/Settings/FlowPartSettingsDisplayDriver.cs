@@ -23,6 +23,8 @@ public sealed class FlowPartSettingsDisplayDriver : ContentTypePartDefinitionDis
         {
             model.FlowPartSettings = contentTypePartDefinition.GetSettings<FlowPartSettings>();
             model.ContainedContentTypes = model.FlowPartSettings.ContainedContentTypes;
+            model.CollapseContainedItems = model.FlowPartSettings.CollapseContainedItems;
+            model.DefaultAlignment = model.FlowPartSettings.DefaultAlignment;
             model.ContentTypes = [];
 
             foreach (var contentTypeDefinition in (await _contentDefinitionManager.ListTypeDefinitionsAsync()).Where(t => t.GetStereotype() == "Widget"))
@@ -37,11 +39,15 @@ public sealed class FlowPartSettingsDisplayDriver : ContentTypePartDefinitionDis
         var model = new FlowPartSettingsViewModel();
 
         await context.Updater.TryUpdateModelAsync(model, Prefix,
-            m => m.ContainedContentTypes);
+            m => m.ContainedContentTypes,
+            m => m.CollapseContainedItems,
+            m => m.DefaultAlignment);
 
         context.Builder.WithSettings(new FlowPartSettings
         {
-            ContainedContentTypes = model.ContainedContentTypes
+            ContainedContentTypes = model.ContainedContentTypes,
+            CollapseContainedItems = model.CollapseContainedItems,
+            DefaultAlignment = model.DefaultAlignment,
         });
 
         return Edit(contentTypePartDefinition, context);

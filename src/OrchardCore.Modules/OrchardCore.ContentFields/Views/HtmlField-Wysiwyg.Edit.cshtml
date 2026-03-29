@@ -2,18 +2,23 @@
 @using OrchardCore.ContentManagement.Metadata.Models
 @using OrchardCore.ContentFields.Settings
 @using OrchardCore.Mvc.Utilities
+@using OrchardCore.Localization.Data
+@inject IDataLocalizer D
 @{
     var settings = Model.PartFieldDefinition.GetSettings<HtmlFieldSettings>();
     var culture = await Orchard.GetContentCultureAsync(Model.Field.ContentItem);
+    string localizedFieldName = D[Model.PartFieldDefinition.DisplayName(), $"Content Fields{Constants.ContextSeparator}{Model.PartFieldDefinition.PartDefinition.Name}"];
 }
 
+<style asp-name="trumbowyg-plugins" version="2"></style>
 <style asp-name="trumbowyg" version="2"></style>
+<script asp-name="trumbowyg-plugins" version="2" at="Foot"></script>
 <script asp-name="trumbowyg-media-tag" at="Foot"></script>
 <script asp-name="trumbowyg-shortcodes" at="Foot"></script>
 <script asp-name="trumbowyg-theme" at="Foot"></script>
 
 <div class="@Orchard.GetFieldWrapperClasses(Model.PartFieldDefinition)" id="@Html.IdFor(x => x.Html)_FieldWrapper">
-    <label asp-for="Html" class="@Orchard.GetLabelClasses()">@Model.PartFieldDefinition.DisplayName()</label>
+    <label asp-for="Html" class="@Orchard.GetLabelClasses()">@localizedFieldName</label>
     <div class="@Orchard.GetEndClasses()">
         @await DisplayAsync(await New.ShortcodeModal())
         @if (culture.IsRightToLeft())
@@ -57,6 +62,12 @@
         if (defaultButtons[6] !== "insertShortcode") {
             defaultButtons.splice(6, 0, "insertShortcode");
         }
+        defaultButtons.forEach(group => {
+            if (group.includes("undo") && group.includes("redo")) {
+                group[group.indexOf("undo")] = "historyUndo";
+                group[group.indexOf("redo")] = "historyRedo";
+            }
+        });
 
         var settings = {
             lang: '@culture.TwoLetterISOLanguageName',

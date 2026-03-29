@@ -13,6 +13,7 @@ using OrchardCore.Data;
 using OrchardCore.Environment.Shell;
 using OrchardCore.Extensions;
 using OrchardCore.Json;
+using OrchardCore.Localization;
 using YesSql.Indexes;
 using YesSql.Provider.Sqlite;
 using YesSql.Serialization;
@@ -28,7 +29,7 @@ public class ContentItemsFieldTypeTests : IAsyncLifetime
     protected string _prefix;
     protected string _tempFilename;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         var connectionStringTemplate = @"Data Source={0};Cache=Shared";
 
@@ -60,7 +61,7 @@ public class ContentItemsFieldTypeTests : IAsyncLifetime
         await CreateTablesAsync(_prefixedStore);
     }
 
-    public Task DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         _store.Dispose();
         _store = null;
@@ -94,7 +95,7 @@ public class ContentItemsFieldTypeTests : IAsyncLifetime
             }
         }
 
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     private static async Task CreateTablesAsync(IStore store)
@@ -126,6 +127,10 @@ public class ContentItemsFieldTypeTests : IAsyncLifetime
                 .Column<bool>(nameof(AnimalTraitsIndex.IsScary))
             );
 
+            await builder.CreateMapIndexTableAsync<AnimalLocalizationIndex>(table => table
+                .Column<string>(nameof(AnimalLocalizationIndex.Culture))
+            );
+
             await session.SaveChangesAsync();
         }
 
@@ -143,6 +148,8 @@ public class ContentItemsFieldTypeTests : IAsyncLifetime
         services.Services.AddScoped(x => new ShellSettings());
         services.Services.AddSingleton<IIndexPropertyProvider, IndexPropertyProvider<ContentItemIndex>>();
         services.Services.AddSingleton<IIndexPropertyProvider, IndexPropertyProvider<AnimalIndex>>();
+        services.Services.AddLocalization();
+        services.Services.AddSingleton<IStringLocalizerFactory, NullStringLocalizerFactory>();
         services.Build();
 
         var context = CreateAnimalFieldContext(services);
@@ -151,10 +158,10 @@ public class ContentItemsFieldTypeTests : IAsyncLifetime
         ci.Weld(new AnimalPart { Name = "doug" });
 
         var session = context.RequestServices.GetService<ISession>();
-        await session.SaveAsync(ci);
-        await session.SaveChangesAsync();
+        await session.SaveAsync(ci, cancellationToken: TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var type = new ContentItemsFieldType("Animal", new Schema(services), Options.Create(new GraphQLContentOptions()), Options.Create(new GraphQLSettings { DefaultNumberOfResults = 10 }));
+        var type = new ContentItemsFieldType("Animal", new Schema(services), Options.Create(new GraphQLContentOptions()), Options.Create(new GraphQLSettings { DefaultNumberOfResults = 10 }), context.RequestServices);
 
         context.Arguments["where"] = new ArgumentValue(JObject.Parse("{ \"contentItemId\": \"1\" }"), ArgumentSource.Variable);
         var dogs = await ((LockedAsyncFieldResolver<IEnumerable<ContentItem>>)type.Resolver)
@@ -175,6 +182,8 @@ public class ContentItemsFieldTypeTests : IAsyncLifetime
         services.Services.AddSingleton<IIndexPropertyProvider, IndexPropertyProvider<ContentItemIndex>>();
         services.Services.AddSingleton<IIndexPropertyProvider, IndexPropertyProvider<AnimalIndex>>();
         services.Services.AddSingleton<IIndexPropertyProvider, IndexPropertyProvider<AnimalTraitsIndex>>();
+        services.Services.AddLocalization();
+        services.Services.AddSingleton<IStringLocalizerFactory, NullStringLocalizerFactory>();
 
         var shellSettings = new ShellSettings();
         shellSettings["TablePrefix"] = _prefix;
@@ -188,10 +197,10 @@ public class ContentItemsFieldTypeTests : IAsyncLifetime
         ci.Weld(new AnimalPart { Name = "doug" });
 
         var session = context.RequestServices.GetService<ISession>();
-        await session.SaveAsync(ci);
-        await session.SaveChangesAsync();
+        await session.SaveAsync(ci, cancellationToken: TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var type = new ContentItemsFieldType("Animal", new Schema(services), Options.Create(new GraphQLContentOptions()), Options.Create(new GraphQLSettings { DefaultNumberOfResults = 10 }));
+        var type = new ContentItemsFieldType("Animal", new Schema(services), Options.Create(new GraphQLContentOptions()), Options.Create(new GraphQLSettings { DefaultNumberOfResults = 10 }), context.RequestServices);
 
         context.Arguments["where"] = new ArgumentValue(JObject.Parse("{ \"contentItemId\": \"1\" }"), ArgumentSource.Variable);
         var dogs = await ResolveContentItems(type, context);
@@ -215,6 +224,8 @@ public class ContentItemsFieldTypeTests : IAsyncLifetime
         services.Services.AddIndexProvider<AnimalIndexProvider>();
         services.Services.AddScoped<IIndexAliasProvider, MultipleAliasIndexProvider>();
         services.Services.AddSingleton<IIndexPropertyProvider, IndexPropertyProvider<AnimalIndex>>();
+        services.Services.AddLocalization();
+        services.Services.AddSingleton<IStringLocalizerFactory, NullStringLocalizerFactory>();
         services.Build();
 
         var context = CreateAnimalFieldContext(services, fieldName);
@@ -223,13 +234,14 @@ public class ContentItemsFieldTypeTests : IAsyncLifetime
         ci.Weld(new AnimalPart { Name = "doug" });
 
         var session = context.RequestServices.GetService<ISession>();
-        await session.SaveAsync(ci);
-        await session.SaveChangesAsync();
+        await session.SaveAsync(ci, cancellationToken: TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var type = new ContentItemsFieldType("Animal",
             new Schema(services),
             Options.Create(new GraphQLContentOptions()),
-            Options.Create(new GraphQLSettings { DefaultNumberOfResults = 10 }));
+            Options.Create(new GraphQLSettings { DefaultNumberOfResults = 10 }),
+            context.RequestServices);
 
         context.Arguments["where"] = new ArgumentValue(JObject.Parse($"{{\"{fieldName}\" : {{ \"name\": \"doug\" }} }}"), ArgumentSource.Variable);
         var dogs = await ResolveContentItems(type, context);
@@ -251,6 +263,8 @@ public class ContentItemsFieldTypeTests : IAsyncLifetime
         services.Services.AddIndexProvider<AnimalIndexProvider>();
         services.Services.AddScoped<IIndexAliasProvider, MultipleAliasIndexProvider>();
         services.Services.AddSingleton<IIndexPropertyProvider, IndexPropertyProvider<AnimalIndex>>();
+        services.Services.AddLocalization();
+        services.Services.AddSingleton<IStringLocalizerFactory, NullStringLocalizerFactory>();
 
         services.Build();
         var context = CreateAnimalFieldContext(services);
@@ -259,10 +273,10 @@ public class ContentItemsFieldTypeTests : IAsyncLifetime
         ci.Weld(new Animal { Name = "doug" });
 
         var session = context.RequestServices.GetService<ISession>();
-        await session.SaveAsync(ci);
-        await session.SaveChangesAsync();
+        await session.SaveAsync(ci, cancellationToken: TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var type = new ContentItemsFieldType("Animal", new Schema(), Options.Create(new GraphQLContentOptions()), Options.Create(new GraphQLSettings { DefaultNumberOfResults = 10 }));
+        var type = new ContentItemsFieldType("Animal", new Schema(), Options.Create(new GraphQLContentOptions()), Options.Create(new GraphQLSettings { DefaultNumberOfResults = 10 }), context.RequestServices);
 
         context.Arguments["where"] = new ArgumentValue(JObject.Parse("{ \"cats\": { \"name\": \"doug\" } }"), ArgumentSource.Variable);
         var cats = await ResolveContentItems(type, context);
@@ -291,6 +305,8 @@ public class ContentItemsFieldTypeTests : IAsyncLifetime
         services.Services.AddIndexProvider<AnimalIndexProvider>();
         services.Services.AddIndexProvider<AnimalTraitsIndexProvider>();
         services.Services.AddScoped<IIndexAliasProvider, MultipleIndexesIndexProvider>();
+        services.Services.AddLocalization();
+        services.Services.AddSingleton<IStringLocalizerFactory, NullStringLocalizerFactory>();
 
         services.Services.AddSingleton<IIndexPropertyProvider, IndexPropertyProvider<AnimalIndex>>();
         services.Services.AddSingleton<IIndexPropertyProvider, IndexPropertyProvider<AnimalTraitsIndex>>();
@@ -308,12 +324,12 @@ public class ContentItemsFieldTypeTests : IAsyncLifetime
         ci2.Weld(new Animal { Name = "tommy", IsHappy = false, IsScary = true });
 
         var session = context.RequestServices.GetService<ISession>();
-        await session.SaveAsync(ci);
-        await session.SaveAsync(ci1);
-        await session.SaveAsync(ci2);
-        await session.SaveChangesAsync();
+        await session.SaveAsync(ci, cancellationToken: TestContext.Current.CancellationToken);
+        await session.SaveAsync(ci1, cancellationToken: TestContext.Current.CancellationToken);
+        await session.SaveAsync(ci2, cancellationToken: TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var type = new ContentItemsFieldType("Animal", new Schema(), Options.Create(new GraphQLContentOptions()), Options.Create(new GraphQLSettings { DefaultNumberOfResults = 10 }));
+        var type = new ContentItemsFieldType("Animal", new Schema(), Options.Create(new GraphQLContentOptions()), Options.Create(new GraphQLSettings { DefaultNumberOfResults = 10 }), context.RequestServices);
 
         context.Arguments["where"] = new ArgumentValue(JObject.Parse("{ \"animals\": { \"name\": \"doug\", \"isScary\": true } }"), ArgumentSource.Variable);
         var animals = await ResolveContentItems(type, context);
@@ -337,6 +353,8 @@ public class ContentItemsFieldTypeTests : IAsyncLifetime
         services.Services.AddIndexProvider<AnimalIndexProvider>();
         services.Services.AddScoped<IIndexAliasProvider, MultipleAliasIndexProvider>();
         services.Services.AddSingleton<IIndexPropertyProvider, IndexPropertyProvider<AnimalIndex>>();
+        services.Services.AddLocalization();
+        services.Services.AddSingleton<IStringLocalizerFactory, NullStringLocalizerFactory>();
         services.Build();
 
         var context = CreateAnimalFieldContext(services);
@@ -345,16 +363,93 @@ public class ContentItemsFieldTypeTests : IAsyncLifetime
         ci.Weld(new AnimalPart { Name = "doug" });
 
         var session = context.RequestServices.GetService<ISession>();
-        await session.SaveAsync(ci);
-        await session.SaveChangesAsync();
+        await session.SaveAsync(ci, cancellationToken: TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var type = new ContentItemsFieldType("Animal", new Schema(), Options.Create(new GraphQLContentOptions()), Options.Create(new GraphQLSettings { DefaultNumberOfResults = 10 }));
+        var type = new ContentItemsFieldType("Animal", new Schema(), Options.Create(new GraphQLContentOptions()), Options.Create(new GraphQLSettings { DefaultNumberOfResults = 10 }), context.RequestServices);
 
         context.Arguments["where"] = new ArgumentValue(JObject.Parse("{ \"animal\": { \"name\": \"doug\" } }"), ArgumentSource.Variable);
         var dogs = await ResolveContentItems(type, context);
 
         Assert.Single(dogs);
         Assert.Equal("doug", dogs.First().As<AnimalPart>().Name);
+    }
+
+    [Fact]
+    public async Task ShouldFilterNestedPartInputWhenPartNameHasNoPrefix()
+    {
+        _store.RegisterIndexes<AnimalLocalizationIndexProvider>();
+
+        using var services = new FakeServiceCollection();
+        services.Populate(new ServiceCollection());
+        services.Services.AddScoped(x => _store.CreateSession());
+        services.Services.AddScoped(x => new ShellSettings());
+        services.Services.AddIndexProvider<ContentItemIndexProvider>();
+        services.Services.AddIndexProvider<AnimalLocalizationIndexProvider>();
+        services.Services.AddScoped<IIndexAliasProvider, AnimalLocalizationAliasProvider>();
+        services.Services.AddSingleton<IIndexPropertyProvider, IndexPropertyProvider<AnimalLocalizationIndex>>();
+        services.Services.AddLocalization();
+        services.Services.AddSingleton<IStringLocalizerFactory, NullStringLocalizerFactory>();
+        services.Build();
+
+        var context = CreateAnimalNestedFieldContext(services);
+
+        var ci = new ContentItem { ContentType = "Animal", Published = true, ContentItemId = "1", ContentItemVersionId = "1" };
+        ci.Weld(new AnimalPart { Name = "doug", Culture = "cs-CZ" });
+
+        var ci1 = new ContentItem { ContentType = "Animal", Published = true, ContentItemId = "2", ContentItemVersionId = "2" };
+        ci1.Weld(new AnimalPart { Name = "doug", Culture = "en-US" });
+
+        var session = context.RequestServices.GetService<ISession>();
+        await session.SaveAsync(ci, cancellationToken: TestContext.Current.CancellationToken);
+        await session.SaveAsync(ci1, cancellationToken: TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var type = new ContentItemsFieldType("Animal", new Schema(), Options.Create(new GraphQLContentOptions()), Options.Create(new GraphQLSettings { DefaultNumberOfResults = 10 }), context.RequestServices);
+
+        context.Arguments["where"] = new ArgumentValue(JObject.Parse("{ \"animal\": { \"culture\": \"cs-CZ\" } }"), ArgumentSource.Variable);
+        var animals = await ResolveContentItems(type, context);
+
+        Assert.Single(animals);
+        Assert.Equal("cs-CZ", animals.First().As<AnimalPart>().Culture);
+    }
+
+    [Theory]
+    [InlineData("animal")]
+    [InlineData("ANIMAL")]
+    [InlineData("Animal")]
+    public async Task ShouldFilterNestedPartInputRegardlessOfInputFieldCase(string fieldName)
+    {
+        _store.RegisterIndexes<AnimalLocalizationIndexProvider>();
+
+        using var services = new FakeServiceCollection();
+        services.Populate(new ServiceCollection());
+        services.Services.AddScoped(x => _store.CreateSession());
+        services.Services.AddScoped(x => new ShellSettings());
+        services.Services.AddIndexProvider<ContentItemIndexProvider>();
+        services.Services.AddIndexProvider<AnimalLocalizationIndexProvider>();
+        services.Services.AddScoped<IIndexAliasProvider, AnimalLocalizationAliasProvider>();
+        services.Services.AddSingleton<IIndexPropertyProvider, IndexPropertyProvider<AnimalLocalizationIndex>>();
+        services.Services.AddLocalization();
+        services.Services.AddSingleton<IStringLocalizerFactory, NullStringLocalizerFactory>();
+        services.Build();
+
+        var context = CreateAnimalNestedFieldContext(services, fieldName);
+
+        var ci = new ContentItem { ContentType = "Animal", Published = true, ContentItemId = "1", ContentItemVersionId = "1" };
+        ci.Weld(new AnimalPart { Name = "doug", Culture = "cs-CZ" });
+
+        var session = context.RequestServices.GetService<ISession>();
+        await session.SaveAsync(ci, cancellationToken: TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var type = new ContentItemsFieldType("Animal", new Schema(), Options.Create(new GraphQLContentOptions()), Options.Create(new GraphQLSettings { DefaultNumberOfResults = 10 }), context.RequestServices);
+
+        context.Arguments["where"] = new ArgumentValue(JObject.Parse($"{{ \"{fieldName}\": {{ \"culture\": \"cs-CZ\" }} }}"), ArgumentSource.Variable);
+        var animals = await ResolveContentItems(type, context);
+
+        Assert.Single(animals);
+        Assert.Equal("cs-CZ", animals.First().As<AnimalPart>().Culture);
     }
 
     [Fact]
@@ -370,6 +465,8 @@ public class ContentItemsFieldTypeTests : IAsyncLifetime
         services.Services.AddIndexProvider<AnimalIndexProvider>();
         services.Services.AddScoped<IIndexAliasProvider, MultipleAliasIndexProvider>();
         services.Services.AddSingleton<IIndexPropertyProvider, IndexPropertyProvider<AnimalIndex>>();
+        services.Services.AddLocalization();
+        services.Services.AddSingleton<IStringLocalizerFactory, NullStringLocalizerFactory>();
         services.Build();
 
         var context = CreateAnimalFieldContext(services, collapsed: true);
@@ -378,10 +475,10 @@ public class ContentItemsFieldTypeTests : IAsyncLifetime
         ci.Weld(new AnimalPart { Name = "doug" });
 
         var session = context.RequestServices.GetService<ISession>();
-        await session.SaveAsync(ci);
-        await session.SaveChangesAsync();
+        await session.SaveAsync(ci, cancellationToken: TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var type = new ContentItemsFieldType("Animal", new Schema(), Options.Create(new GraphQLContentOptions()), Options.Create(new GraphQLSettings { DefaultNumberOfResults = 10 }));
+        var type = new ContentItemsFieldType("Animal", new Schema(), Options.Create(new GraphQLContentOptions()), Options.Create(new GraphQLSettings { DefaultNumberOfResults = 10 }), context.RequestServices);
 
         context.Arguments["where"] = new ArgumentValue(JObject.Parse("{ \"name\": \"doug\" }"), ArgumentSource.Variable);
         var dogs = await ResolveContentItems(type, context);
@@ -394,18 +491,20 @@ public class ContentItemsFieldTypeTests : IAsyncLifetime
     {
         return (await ((LockedAsyncFieldResolver<IEnumerable<ContentItem>>)type.Resolver).ResolveAsync(context)) as IEnumerable<ContentItem>;
     }
-    private static ResolveFieldContext CreateAnimalFieldContext(IServiceProvider services, string fieldName = null, bool collapsed = false)
-    {
-        IGraphType where;
 
-        if (!collapsed)
-        {
-            where = new AnimalPartWhereInput(fieldName ?? "Animal");
-        }
-        else
-        {
-            where = new AnimalPartCollapsedWhereInput();
-        }
+    private static ResolveFieldContext CreateAnimalNestedFieldContext(IServiceProvider services, string fieldName = null)
+        => CreateAnimalFieldContext(
+            services,
+            where: new AnimalNestedPartWhereInput(
+                fieldName ?? "Animal",
+                MockStringLocalizer<AnimalNestedPartWhereInput>(),
+                MockStringLocalizer<AnimalNestedPartInput>()));
+
+    private static ResolveFieldContext CreateAnimalFieldContext(IServiceProvider services, string fieldName = null, bool collapsed = false, IGraphType where = null)
+    {
+        where ??= !collapsed
+            ? new AnimalPartWhereInput(fieldName ?? "Animal", MockStringLocalizer<AnimalPartWhereInput>())
+            : new AnimalPartCollapsedWhereInput(MockStringLocalizer<AnimalPartCollapsedWhereInput>());
 
         return new ResolveFieldContext
         {
@@ -414,28 +513,46 @@ public class ContentItemsFieldTypeTests : IAsyncLifetime
             FieldDefinition = new FieldType
             {
                 Name = "Inputs",
-                ResolvedType = new ListGraphType(new StringGraphType() { Name = "Animal" }),
-                Arguments = [
-                        new QueryArgument<WhereInputObjectGraphType>
-                        {
-                            Name = "where",
-                            Description = "filters the animals",
-                            ResolvedType = where
-                        }
-                    ]
+                ResolvedType = new ListGraphType(new StringGraphType()
+                {
+                    Name = "Animal",
+                }),
+                Arguments =
+                [
+                    new QueryArgument<WhereInputObjectGraphType>
+                    {
+                        Name = "where",
+                        Description = "filters the animals",
+                        ResolvedType = where,
+                    }
+                ],
             },
-            RequestServices = services
+            RequestServices = services,
         };
+    }
+
+    private static IStringLocalizer<T> MockStringLocalizer<T>()
+    {
+        var localizerMock = new Mock<IStringLocalizer<T>>();
+        localizerMock.Setup(x => x[It.IsAny<string>()]).Returns((string arg) => new LocalizedString(arg, arg));
+
+        return localizerMock.Object;
     }
 }
 
 public class AnimalPartWhereInput : WhereInputObjectGraphType
 {
-    public AnimalPartWhereInput(string fieldName)
+    public AnimalPartWhereInput(string fieldName, IStringLocalizer<AnimalPartWhereInput> stringLocalizer)
+        : base(stringLocalizer)
     {
         Name = "Test";
         Description = "Foo";
-        var fieldType = new FieldType { Name = fieldName, Type = typeof(StringGraphType) };
+        var fieldType = new FieldType
+        {
+            Name = fieldName,
+            Type = typeof(StringGraphType),
+            ResolvedType = new StringGraphType(),
+        };
         fieldType.Metadata["PartName"] = "AnimalPart";
         AddField(fieldType);
     }
@@ -443,21 +560,60 @@ public class AnimalPartWhereInput : WhereInputObjectGraphType
 
 public class AnimalPartCollapsedWhereInput : WhereInputObjectGraphType
 {
-    public AnimalPartCollapsedWhereInput()
+    public AnimalPartCollapsedWhereInput(IStringLocalizer<AnimalPartCollapsedWhereInput> stringLocalizer)
+        : base(stringLocalizer)
     {
         Name = "Test";
         Description = "Foo";
-        var fieldType = new FieldType { Name = "Name", Type = typeof(StringGraphType) };
+        var fieldType = new FieldType
+        {
+            Name = "Name",
+            Type = typeof(StringGraphType),
+            ResolvedType = new StringGraphType(),
+        };
         fieldType.Metadata["PartName"] = "AnimalPart";
         fieldType.Metadata["PartCollapsed"] = true;
         AddField(fieldType);
     }
 }
 
+public class AnimalNestedPartWhereInput : WhereInputObjectGraphType
+{
+    public AnimalNestedPartWhereInput(string fieldName, IStringLocalizer<AnimalNestedPartWhereInput> stringLocalizer, IStringLocalizer<AnimalNestedPartInput> nestedStringLocalizer)
+        : base(stringLocalizer)
+    {
+        Name = "Test";
+        Description = "Foo";
+        var fieldType = new FieldType
+        {
+            Name = fieldName,
+            Type = typeof(AnimalNestedPartInput),
+            ResolvedType = new AnimalNestedPartInput(nestedStringLocalizer),
+        };
+        fieldType.Metadata["PartName"] = "AnimalPart";
+        AddField(fieldType);
+    }
+}
+
+public class AnimalNestedPartInput : WhereInputObjectGraphType
+{
+    public AnimalNestedPartInput(IStringLocalizer<AnimalNestedPartInput> stringLocalizer)
+        : base(stringLocalizer)
+    {
+        Name = "AnimalNestedPartInput";
+        Description = "Foo";
+        AddScalarFilterFields<StringGraphType>("culture", S["culture"]);
+    }
+}
+
 public class Animal : ContentPart
 {
     public string Name { get; set; }
+
+    public string Culture { get; set; }
+
     public bool IsHappy { get; set; }
+
     public bool IsScary { get; set; }
 }
 
@@ -479,7 +635,7 @@ public class AnimalIndexProvider : IndexProvider<ContentItem>
                 {
                     Name = contentItem.As<Animal>() != null
                         ? contentItem.As<Animal>().Name
-                        : contentItem.As<AnimalPart>().Name
+                        : contentItem.As<AnimalPart>().Name,
                 };
             });
     }
@@ -505,7 +661,7 @@ public class AnimalTraitsIndexProvider : IndexProvider<ContentItem>
                     return new AnimalTraitsIndex
                     {
                         IsHappy = contentItem.As<Animal>().IsHappy,
-                        IsScary = contentItem.As<Animal>().IsScary
+                        IsScary = contentItem.As<Animal>().IsScary,
                     };
                 }
 
@@ -514,7 +670,29 @@ public class AnimalTraitsIndexProvider : IndexProvider<ContentItem>
                 return new AnimalTraitsIndex
                 {
                     IsHappy = animalPartSuffix.IsHappy,
-                    IsScary = animalPartSuffix.IsScary
+                    IsScary = animalPartSuffix.IsScary,
+                };
+            });
+    }
+}
+
+public class AnimalLocalizationIndex : MapIndex
+{
+    public string Culture { get; set; }
+}
+
+public class AnimalLocalizationIndexProvider : IndexProvider<ContentItem>
+{
+    public override void Describe(DescribeContext<ContentItem> context)
+    {
+        context.For<AnimalLocalizationIndex>()
+            .Map(contentItem =>
+            {
+                var animal = contentItem.As<Animal>();
+
+                return new AnimalLocalizationIndex
+                {
+                    Culture = animal?.Culture ?? contentItem.As<AnimalPart>().Culture,
                 };
             });
     }
@@ -528,19 +706,37 @@ public class MultipleAliasIndexProvider : IIndexAliasProvider
         {
             Alias = "cats",
             Index = nameof(AnimalIndex),
-            IndexType = typeof(AnimalIndex)
+            IndexType = typeof(AnimalIndex),
         },
         new IndexAlias
         {
             Alias = "dogs",
             Index = nameof(AnimalIndex),
-            IndexType = typeof(AnimalIndex)
+            IndexType = typeof(AnimalIndex),
         },
         new IndexAlias
         {
             Alias = nameof(AnimalPart),
             Index = nameof(AnimalIndex),
-            IndexType = typeof(AnimalIndex)
+            IndexType = typeof(AnimalIndex),
+        }
+    ];
+
+    public ValueTask<IEnumerable<IndexAlias>> GetAliasesAsync()
+    {
+        return ValueTask.FromResult<IEnumerable<IndexAlias>>(_aliases);
+    }
+}
+
+public class AnimalLocalizationAliasProvider : IIndexAliasProvider
+{
+    private static readonly IndexAlias[] _aliases =
+    [
+        new IndexAlias
+        {
+            Alias = "animalPart",
+            Index = nameof(AnimalLocalizationIndex),
+            IndexType = typeof(AnimalLocalizationIndex),
         }
     ];
 
@@ -558,19 +754,19 @@ public class MultipleIndexesIndexProvider : IIndexAliasProvider
         {
             Alias = "animals.name",
             Index = $"Name",
-            IndexType = typeof(AnimalIndex)
+            IndexType = typeof(AnimalIndex),
         },
         new IndexAlias
         {
             Alias = "animals.isHappy",
             Index = $"IsHappy",
-            IndexType = typeof(AnimalTraitsIndex)
+            IndexType = typeof(AnimalTraitsIndex),
         },
         new IndexAlias
         {
             Alias = "animals.isScary",
             Index = $"IsScary",
-            IndexType = typeof(AnimalTraitsIndex)
+            IndexType = typeof(AnimalTraitsIndex),
         }
     ];
 
@@ -605,10 +801,5 @@ public class FakeServiceCollection : IServiceProvider, IDisposable
         _inner = _services.BuildServiceProvider();
     }
 
-#pragma warning disable CA1816 // Dispose methods should call SuppressFinalize
-    public void Dispose()
-#pragma warning restore CA1816 // Dispose methods should call SuppressFinalize
-    {
-        (_inner as IDisposable)?.Dispose();
-    }
+    public void Dispose() => _inner?.Dispose();
 }

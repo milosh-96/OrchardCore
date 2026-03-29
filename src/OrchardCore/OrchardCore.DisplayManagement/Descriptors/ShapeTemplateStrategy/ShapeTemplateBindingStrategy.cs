@@ -53,7 +53,7 @@ public class ShapeTemplateBindingStrategy : ShapeTableProvider, IShapeTableHarve
             .Select(harvester => new
             {
                 harvester,
-                subPaths = harvester.SubPaths()
+                subPaths = harvester.SubPaths(),
             })
             .ToList();
 
@@ -90,7 +90,7 @@ public class ShapeTemplateBindingStrategy : ShapeTableProvider, IShapeTableHarve
                     {
                         fileName = Path.GetFileNameWithoutExtension(filePath),
                         relativePath = filePath,
-                        pathContext
+                        pathContext,
                     });
             }));
 
@@ -101,7 +101,7 @@ public class ShapeTemplateBindingStrategy : ShapeTableProvider, IShapeTableHarve
                     SubPath = fileContext.pathContext.subPath,
                     FileName = fileContext.fileName,
                     RelativePath = fileContext.relativePath,
-                    Extension = Path.GetExtension(fileContext.relativePath)
+                    Extension = Path.GetExtension(fileContext.relativePath),
                 };
                 var harvestShapeHits = fileContext.pathContext.harvester.HarvestShape(harvestShapeInfo);
                 return harvestShapeHits.Select(harvestShapeHit => new { harvestShapeInfo, harvestShapeHit, fileContext });

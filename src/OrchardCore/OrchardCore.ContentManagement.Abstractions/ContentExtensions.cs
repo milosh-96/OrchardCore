@@ -15,7 +15,7 @@ public static class ContentExtensions
     private static readonly JsonMergeSettings _jsonMergeSettings = new()
     {
         MergeArrayHandling = MergeArrayHandling.Replace,
-        MergeNullValueHandling = MergeNullValueHandling.Merge
+        MergeNullValueHandling = MergeNullValueHandling.Merge,
     };
 
     private static readonly JsonSerializerOptions _jsonReadExistingObjectSettings = new(JOptions.Default)
@@ -138,7 +138,13 @@ public static class ContentExtensions
     {
         if (!contentElement.Data.ContainsKey(name))
         {
-            element.Data = JObject.FromObject(element);
+            // If the element already has Data (e.g., it has been populated with fields),
+            // use it directly instead of creating a new JsonObject from the element object
+            if (element.Data is null || element.Data.Count == 0)
+            {
+                element.Data = JObject.FromObject(element);
+            }
+
             element.ContentItem = contentElement.ContentItem;
 
             contentElement.Data[name] = element.Data;

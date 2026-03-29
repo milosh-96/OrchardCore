@@ -2,14 +2,12 @@ using OrchardCore.ContentManagement.Display.Models;
 using OrchardCore.ContentManagement.Metadata.Models;
 using OrchardCore.DisplayManagement;
 using OrchardCore.DisplayManagement.Handlers;
-using OrchardCore.DisplayManagement.ModelBinding;
 using OrchardCore.DisplayManagement.Views;
 
 namespace OrchardCore.ContentManagement.Display.ContentDisplay;
 
 public abstract class ContentFieldDisplayDriver<TField> : DisplayDriverBase, IContentFieldDisplayDriver where TField : ContentField, new()
 {
-    private const string DisplayToken = "_Display";
     private const string DisplaySeparator = "_Display__";
 
     private ContentTypePartDefinition _typePartDefinition;
@@ -24,15 +22,13 @@ public abstract class ContentFieldDisplayDriver<TField> : DisplayDriverBase, ICo
 
         if (_typePartDefinition != null && _partFieldDefinition != null)
         {
-            var partType = _typePartDefinition.PartDefinition.Name;
             var partName = _typePartDefinition.Name;
             var fieldType = _partFieldDefinition.FieldDefinition.Name;
             var fieldName = _partFieldDefinition.Name;
-            var contentType = _typePartDefinition.ContentTypeDefinition.Name;
             var displayMode = _partFieldDefinition.DisplayMode();
-            var hasDisplayMode = !string.IsNullOrEmpty(displayMode);
+            var editorShapeType = GetEditorShapeType(_partFieldDefinition);
 
-            if (GetEditorShapeType(_partFieldDefinition) == shapeType)
+            if (editorShapeType == shapeType)
             {
                 // HtmlBodyPart-Description, Services-Description
                 result.Differentiator($"{partName}-{fieldName}");
@@ -42,7 +38,7 @@ public abstract class ContentFieldDisplayDriver<TField> : DisplayDriverBase, ICo
             }
 
             // If the shape type and the field type only differ by the display mode
-            if (hasDisplayMode && shapeType == fieldType + DisplaySeparator + displayMode)
+            if (!string.IsNullOrEmpty(displayMode) && shapeType == fieldType + DisplaySeparator + displayMode)
             {
                 // Preserve the shape name regardless its differentiator
                 result.Name($"{partName}-{fieldName}");
@@ -59,68 +55,17 @@ public abstract class ContentFieldDisplayDriver<TField> : DisplayDriverBase, ICo
                 result.Differentiator($"{partName}-{fieldName}-{shapeType}");
             }
 
+            // The definitions will be cleared before the displaying event is raised, so
+            // we need to cache it here for use in the displaying event to add alternates.
+            var typePartDefinition = _typePartDefinition;
+            var partFieldDefinition = _partFieldDefinition;
             result.Displaying(ctx =>
             {
-                var displayTypes = new[] { string.Empty, "_" + ctx.Shape.Metadata.DisplayType };
+                var displayType = ctx.Shape.Metadata.DisplayType;
 
-                // [ShapeType]_[DisplayType], e.g. TextField.Summary
-                ctx.Shape.Metadata.Alternates.Add($"{shapeType}_{ctx.Shape.Metadata.DisplayType}");
-
-                // When the shape type is the same as the field, we can ignore one of them in the alternate name
-                // For instance TextField returns a unique TextField shape type.
-                if (shapeType == fieldType)
-                {
-                    foreach (var displayType in displayTypes)
-                    {
-                        // [PartType]__[FieldName], e.g. HtmlBodyPart-Description
-                        ctx.Shape.Metadata.Alternates.Add($"{partType}{displayType}__{fieldName}");
-
-                        // [ContentType]__[FieldType], e.g. Blog-TextField, LandingPage-TextField
-                        ctx.Shape.Metadata.Alternates.Add($"{contentType}{displayType}__{fieldType}");
-
-                        // [ContentType]__[PartName]__[FieldName], e.g. Blog-HtmlBodyPart-Description, LandingPage-Services-Description
-                        ctx.Shape.Metadata.Alternates.Add($"{contentType}{displayType}__{partType}__{fieldName}");
-                    }
-                }
-                else
-                {
-                    if (hasDisplayMode)
-                    {
-                        // [FieldType]_[DisplayType]__[DisplayMode]_Display, e.g. TextField-Header.Display.Summary
-                        ctx.Shape.Metadata.Alternates.Add($"{fieldType}_{ctx.Shape.Metadata.DisplayType}__{displayMode}{DisplayToken}");
-                    }
-
-                    for (var i = 0; i < displayTypes.Length; i++)
-                    {
-                        var displayType = displayTypes[i];
-
-                        if (hasDisplayMode)
-                        {
-                            shapeType = $"{fieldType}__{displayMode}";
-
-                            if (displayType == string.Empty)
-                            {
-                                displayType = DisplayToken;
-                            }
-                            else
-                            {
-                                shapeType += DisplayToken;
-                            }
-                        }
-
-                        // [FieldType]__[ShapeType], e.g. TextField-TextFieldSummary
-                        ctx.Shape.Metadata.Alternates.Add($"{fieldType}{displayType}__{shapeType}");
-
-                        // [PartType]__[FieldName]__[ShapeType], e.g. HtmlBodyPart-Description-TextFieldSummary
-                        ctx.Shape.Metadata.Alternates.Add($"{partType}{displayType}__{fieldName}__{shapeType}");
-
-                        // [ContentType]__[FieldType]__[ShapeType], e.g. Blog-TextField-TextFieldSummary, LandingPage-TextField-TextFieldSummary
-                        ctx.Shape.Metadata.Alternates.Add($"{contentType}{displayType}__{fieldType}__{shapeType}");
-
-                        // [ContentType]__[PartName]__[FieldName]__[ShapeType], e.g. Blog-HtmlBodyPart-Description-TextFieldSummary, LandingPage-Services-Description-TextFieldSummary
-                        ctx.Shape.Metadata.Alternates.Add($"{contentType}{displayType}__{partName}__{fieldName}__{shapeType}");
-                    }
-                }
+                // Get cached alternates for this display type and add them efficiently
+                var cachedAlternates = ContentFieldAlternatesFactory.GetAlternates(typePartDefinition, partFieldDefinition, shapeType, displayType);
+                ctx.Shape.Metadata.Alternates.AddRange(cachedAlternates);
             });
         }
 
@@ -166,24 +111,19 @@ public abstract class ContentFieldDisplayDriver<TField> : DisplayDriverBase, ICo
 
         var field = contentPart.GetOrCreate<TField>(partFieldDefinition.Name);
 
-        if (field != null)
-        {
-            BuildPrefix(typePartDefinition, partFieldDefinition, context.HtmlFieldPrefix);
+        BuildPrefix(typePartDefinition, partFieldDefinition, context.HtmlFieldPrefix);
 
-            var fieldEditorContext = new BuildFieldEditorContext(contentPart, typePartDefinition, partFieldDefinition, context);
+        var fieldEditorContext = new BuildFieldEditorContext(contentPart, typePartDefinition, partFieldDefinition, context);
 
-            _typePartDefinition = typePartDefinition;
-            _partFieldDefinition = partFieldDefinition;
+        _typePartDefinition = typePartDefinition;
+        _partFieldDefinition = partFieldDefinition;
 
-            var result = EditAsync(field, fieldEditorContext);
+        var result = EditAsync(field, fieldEditorContext);
 
-            _typePartDefinition = null;
-            _partFieldDefinition = null;
+        _typePartDefinition = null;
+        _partFieldDefinition = null;
 
-            return result;
-        }
-
-        return Task.FromResult(default(IDisplayResult));
+        return result;
     }
 
     async Task<IDisplayResult> IContentFieldDisplayDriver.UpdateEditorAsync(ContentPart contentPart, ContentPartFieldDefinition partFieldDefinition, ContentTypePartDefinition typePartDefinition, UpdateEditorContext context)
@@ -240,21 +180,7 @@ public abstract class ContentFieldDisplayDriver<TField> : DisplayDriverBase, ICo
 
     public virtual Task<IDisplayResult> UpdateAsync(TField field, UpdateFieldEditorContext context)
     {
-#pragma warning disable CS0618 // Type or member is obsolete
-        return UpdateAsync(field, context.Updater, context);
-#pragma warning restore CS0618 // Type or member is obsolete
-    }
-
-    [Obsolete("This method is obsolete and will be removed in version 3. Instead, use the UpdateAsync(TField field, UpdateFieldEditorContext context) method.")]
-    public virtual Task<IDisplayResult> UpdateAsync(TField field, IUpdateModel updater, UpdateFieldEditorContext context)
-    {
-        return Task.FromResult(Update(field, updater, context));
-    }
-
-    [Obsolete("This method is obsolete and will be removed in version 3. Instead, use the UpdateAsync(TField field, UpdateFieldEditorContext context) method.")]
-    public virtual IDisplayResult Update(TField field, IUpdateModel updater, UpdateFieldEditorContext context)
-    {
-        return null;
+        return Task.FromResult<IDisplayResult>(null);
     }
 
     protected string GetEditorShapeType(string shapeType, ContentPartFieldDefinition partFieldDefinition)

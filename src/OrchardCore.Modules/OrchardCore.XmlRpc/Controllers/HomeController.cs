@@ -1,3 +1,4 @@
+using System.Net.Mime;
 using System.Text;
 using System.Xml;
 using Microsoft.AspNetCore.Mvc;
@@ -43,7 +44,7 @@ public sealed class HomeController : Controller
         {
             Encoding = Encoding.UTF8,
             OmitXmlDeclaration = false,
-            Indent = true
+            Indent = true,
         };
 
         // Save to an intermediate MemoryStream to preserve the encoding declaration.
@@ -56,7 +57,7 @@ public sealed class HomeController : Controller
 
         var content = Encoding.UTF8.GetString(stream.GetReadOnlySequence());
 
-        return Content(content, "text/xml");
+        return Content(content, MediaTypeNames.Text.Xml);
     }
 
     private async Task<XRpcMethodResponse> DispatchAsync(XRpcMethodCall request)
@@ -66,7 +67,7 @@ public sealed class HomeController : Controller
             Url = Url,
             ControllerContext = ControllerContext,
             HttpContext = HttpContext,
-            RpcMethodCall = request
+            RpcMethodCall = request,
         };
 
         try

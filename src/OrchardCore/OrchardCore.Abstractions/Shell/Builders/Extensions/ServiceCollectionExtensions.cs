@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OrchardCore.Environment.Shell.Builders;
 
@@ -14,6 +15,8 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// Registers a delegate used to configure asynchronously a type of options just after a tenant container is created.
     /// </summary>
+    [Obsolete("This method is no longer supported and will be removed in a future version. " +
+        "Use the synchronous Configure<TOptions>(this IServiceCollection, Action<TOptions>) method instead.")]
     public static IServiceCollection Configure<TOptions>(
         this IServiceCollection services, Func<IServiceProvider, TOptions, ValueTask> configureAsync)
         where TOptions : class, IAsyncOptions, new()
@@ -23,10 +26,11 @@ public static class ServiceCollectionExtensions
             services.AddSingleton(new TOptions());
         }
 
-        services.Initialize(async sp =>
+        services.Initialize(sp =>
         {
             var options = sp.GetRequiredService<TOptions>();
-            await configureAsync(sp, options);
+
+            return configureAsync(sp, options);
         });
 
         return services;
@@ -36,8 +40,11 @@ public static class ServiceCollectionExtensions
     /// Registers an <see cref="IAsyncConfigureOptions{TOptions}"/> used to configure
     /// asynchronously a type of options just after a tenant container is created.
     /// </summary>
+    [Obsolete("This method is no longer supported and will be removed in a future version. " +
+        "Use the synchronous ConfigureOptions<TConfigureOptions>(this IServiceCollection) method instead.")]
     public static IServiceCollection Configure<TOptions, TConfigure>(this IServiceCollection services)
-        where TOptions : class, IAsyncOptions, new() where TConfigure : IAsyncConfigureOptions<TOptions>
+        where TOptions : class, IAsyncOptions, new()
+        where TConfigure : IAsyncConfigureOptions<TOptions>
     {
         if (!services.Any(d => d.ServiceType == typeof(TOptions)))
         {
@@ -47,11 +54,18 @@ public static class ServiceCollectionExtensions
         if (!services.Any(d => d.ServiceType == typeof(TConfigure)))
         {
             services.AddTransient(typeof(TConfigure));
-            services.Initialize(async sp =>
+            services.Initialize(sp =>
             {
                 var options = sp.GetRequiredService<TOptions>();
                 var setup = sp.GetRequiredService<TConfigure>();
-                await setup.ConfigureAsync(options);
+                var logger = sp.GetRequiredService<ILogger<TConfigure>>();
+
+                if (logger.IsEnabled(LogLevel.Debug))
+                {
+                    logger.LogDebug("Invoking the ConfigureAsync method on '{ConfigureType}' to configure the '{OptionsType}'", typeof(TConfigure).FullName, typeof(TOptions).FullName);
+                }
+
+                return setup.ConfigureAsync(options);
             });
         }
 

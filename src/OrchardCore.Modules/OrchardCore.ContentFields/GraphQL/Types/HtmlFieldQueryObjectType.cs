@@ -48,14 +48,14 @@ public class HtmlFieldQueryObjectType : ObjectGraphType<HtmlField>
 
         var html = ctx.Source.Html;
 
-        if (!settings.SanitizeHtml)
+        if (settings.RenderLiquid)
         {
             var model = new EditHtmlFieldViewModel()
             {
                 Html = ctx.Source.Html,
                 Field = ctx.Source,
                 Part = ctx.Source.ContentItem.Get<ContentPart>(partName),
-                PartFieldDefinition = contentPartFieldDefinition
+                PartFieldDefinition = contentPartFieldDefinition,
             };
             var liquidTemplateManager = serviceProvider.GetRequiredService<ILiquidTemplateManager>();
             var htmlEncoder = serviceProvider.GetService<HtmlEncoder>();
@@ -68,7 +68,7 @@ public class HtmlFieldQueryObjectType : ObjectGraphType<HtmlField>
             new Context
             {
                 ["ContentItem"] = ctx.Source.ContentItem,
-                ["PartFieldDefinition"] = contentPartFieldDefinition
+                ["PartFieldDefinition"] = contentPartFieldDefinition,
             });
     }
 }

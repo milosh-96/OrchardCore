@@ -27,6 +27,7 @@ using OrchardCore.Environment.Shell.Descriptor.Models;
 using OrchardCore.Extensions;
 using OrchardCore.Json;
 using OrchardCore.Localization;
+using OrchardCore.Localization.Data;
 using OrchardCore.Locking;
 using OrchardCore.Locking.Distributed;
 using OrchardCore.Modules;
@@ -138,6 +139,15 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IStringLocalizerFactory, NullStringLocalizerFactory>();
         services.AddSingleton<IHtmlLocalizerFactory, NullHtmlLocalizerFactory>();
 
+        // Register no-op data localization services as defaults.
+        // These can be replaced when the OrchardCore.DataLocalization module is enabled.
+        services.TryAddSingleton<IDataLocalizerFactory, NullDataLocalizerFactory>();
+        services.TryAddTransient<IDataLocalizer>(sp =>
+        {
+            var dataLocalizerFactory = sp.GetService<IDataLocalizerFactory>();
+            return dataLocalizerFactory.Create();
+        });
+
         services.AddWebEncoders();
 
         services.AddHttpContextAccessor();
@@ -231,7 +241,7 @@ public static class ServiceCollectionExtensions
                     var fileProviders = new List<IStaticFileProvider>
                     {
                         new ModuleProjectStaticFileProvider(appContext),
-                        new ModuleEmbeddedStaticFileProvider(appContext)
+                        new ModuleEmbeddedStaticFileProvider(appContext),
                     };
                     fileProvider = new ModuleCompositeStaticFileProvider(fileProviders);
                 }

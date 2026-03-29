@@ -30,7 +30,6 @@ using OrchardCore.Mvc.Core.Utilities;
 using OrchardCore.Navigation;
 using OrchardCore.Recipes;
 using OrchardCore.Recipes.Services;
-using OrchardCore.ResourceManagement;
 using OrchardCore.Security;
 using OrchardCore.Security.Permissions;
 using OrchardCore.Settings.Deployment;
@@ -38,6 +37,7 @@ using OrchardCore.Setup.Events;
 using OrchardCore.Sms;
 using OrchardCore.Users.Commands;
 using OrchardCore.Users.Controllers;
+using OrchardCore.Users.Core.Services;
 using OrchardCore.Users.DataMigrations;
 using OrchardCore.Users.Deployment;
 using OrchardCore.Users.Drivers;
@@ -69,6 +69,8 @@ public sealed class Startup : StartupBase
 
     public override void ConfigureServices(IServiceCollection services)
     {
+        services.AddShapeTableProvider<UserDisplayNameShapeTableProvider>();
+
         services.AddDataMigration<ExternalAuthenticationMigrations>();
 
         services.Configure<UserOptions>(userOptions =>
@@ -95,7 +97,6 @@ public sealed class Startup : StartupBase
         // This is required for security modules like the OpenID module (that uses SignOutAsync()) to work correctly.
         services.AddAuthentication(options => options.DefaultSignOutScheme = IdentityConstants.ApplicationScheme);
 
-        services.AddSingleton<Microsoft.AspNetCore.Hosting.IStartupFilter, ExternalAuthenticationsStartupFilter>();
         services.AddUsers();
 
         services.ConfigureApplicationCookie(options =>
@@ -132,9 +133,6 @@ public sealed class Startup : StartupBase
         services.AddDisplayDriver<User, UserDisplayDriver>();
         services.AddDisplayDriver<User, UserInformationDisplayDriver>();
         services.AddDisplayDriver<User, UserButtonsDisplayDriver>();
-
-        services.AddScoped<IThemeSelector, UsersThemeSelector>();
-
         services.AddScoped<IRecipeEnvironmentProvider, RecipeEnvironmentSuperUserProvider>();
 
         services.AddScoped<IUsersAdminListQueryService, DefaultUsersAdminListQueryService>();
@@ -156,7 +154,7 @@ public sealed class Startup : StartupBase
         });
 
         services.AddTransient<IUsersAdminListFilterProvider, DefaultUsersAdminListFilterProvider>();
-        services.AddTransient<IConfigureOptions<ResourceManagementOptions>, UserOptionsConfiguration>();
+        services.AddResourceConfiguration<UserOptionsConfiguration>();
         services.AddDisplayDriver<Navbar, UserMenuNavbarDisplayDriver>();
         services.AddDisplayDriver<UserMenu, UserMenuDisplayDriver>();
         services.AddShapeTableProvider<UserMenuShapeTableProvider>();
@@ -166,6 +164,7 @@ public sealed class Startup : StartupBase
         services.AddScoped<CustomUserSettingsService>();
         services.AddRecipeExecutionStep<CustomUserSettingsStep>();
         services.AddDisplayDriver<LoginForm, LoginFormDisplayDriver>();
+        services.AddScoped<ILoginFormEvent, EmailConfirmationLoginFormEvent>();
     }
 
     public override void Configure(IApplicationBuilder builder, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
@@ -276,6 +275,25 @@ public sealed class ExternalAuthenticationStartup : StartupBase
     }
 }
 
+[RequireFeatures("OrchardCore.Email")]
+public sealed class EmailStartup : StartupBase
+{
+    public override void ConfigureServices(IServiceCollection services)
+    {
+        services.AddScoped<UserEmailService>();
+        services.AddScoped<IRegistrationFormEvents, EmailConfirmationRegistrationFormEvents>();
+    }
+}
+
+[RequireFeatures("OrchardCore.Admin")]
+public sealed class AdminStartup : StartupBase
+{
+    public override void ConfigureServices(IServiceCollection services)
+    {
+        services.AddScoped<IThemeSelector, UsersThemeSelector>();
+    }
+}
+
 [RequireFeatures("OrchardCore.Roles")]
 public sealed class RolesStartup : StartupBase
 {
@@ -337,6 +355,7 @@ public sealed class LiquidStartup : StartupBase
             });
         })
        .AddLiquidFilter<UsersByIdFilter>("users_by_id")
+       .AddLiquidFilter<UsersByNameFilter>("users_by_name")
        .AddLiquidFilter<HasPermissionFilter>("has_permission")
        .AddLiquidFilter<IsInRoleFilter>("is_in_role")
        .AddLiquidFilter<UserEmailFilter>("user_email");
@@ -433,6 +452,8 @@ public sealed class RegistrationStartup : StartupBase
         services.AddDisplayDriver<LoginForm, RegisterUserLoginFormDisplayDriver>();
         services.AddDisplayDriver<RegisterUserForm, RegisterUserFormDisplayDriver>();
         services.AddTransient<IConfigureOptions<RegistrationOptions>, RegistrationOptionsConfigurations>();
+        services.AddScoped<ILoginFormEvent, UserModerationLoginFormEvent>();
+        services.AddScoped<IRegistrationFormEvents, UserModerationRegistrationFormEvents>();
     }
 
     public override void Configure(IApplicationBuilder app, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)

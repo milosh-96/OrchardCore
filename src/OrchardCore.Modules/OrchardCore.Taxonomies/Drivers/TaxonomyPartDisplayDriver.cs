@@ -27,7 +27,7 @@ public sealed class TaxonomyPartDisplayDriver : ContentPartDisplayDriver<Taxonom
         {
             m.ContentItem = part.ContentItem;
             m.TaxonomyPart = part;
-        }).Location("Detail", "Content");
+        }).Location(OrchardCoreConstants.DisplayType.Detail, "Content");
     }
 
     public override IDisplayResult Edit(TaxonomyPart part, BuildPartEditorContext context)

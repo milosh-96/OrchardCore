@@ -6,6 +6,7 @@ using OrchardCore.Modules;
 using OrchardCore.Scripting;
 using OrchardCore.Scripting.JavaScript;
 using OrchardCore.Tests.Workflows.Activities;
+using OrchardCore.Workflows.Abstractions.Models;
 using OrchardCore.Workflows.Activities;
 using OrchardCore.Workflows.Evaluators;
 using OrchardCore.Workflows.Models;
@@ -43,7 +44,7 @@ public class WorkflowManagerTests
                     {
                         A = new WorkflowExpression<double>("input(\"A\")"),
                         B = new WorkflowExpression<double>("input(\"B\")"),
-                    })
+                    }),
                 },
                 new() { ActivityId = "2", Name = writeLineTask.Name, Properties = JObject.FromObject(new { Text = new WorkflowExpression<string>("lastResult().toString()") }) },
                 new() { ActivityId = "3", Name = setOutputTask.Name, Properties = JObject.FromObject(new { Value = new WorkflowExpression<string>("lastResult()"), OutputName = "Sum" }) }
@@ -52,7 +53,7 @@ public class WorkflowManagerTests
             [
                 new() { SourceActivityId = "1", SourceOutcomeName = "Done", DestinationActivityId = "2" },
                 new() { SourceActivityId = "2", SourceOutcomeName = "Done", DestinationActivityId = "3" }
-            ]
+            ],
         };
 
         var workflowManager = CreateWorkflowManager(serviceProvider, [addTask, writeLineTask, setOutputTask], workflowType);
@@ -69,6 +70,82 @@ public class WorkflowManagerTests
         Assert.Equal(expectedSum, (double)workflowExecutionContext.Output["Sum"]);
     }
 
+    [Fact]
+    public async Task TriggerEventAsync_ShouldAllowReexecutionAfterUnexpectedError()
+    {
+        const string nonExistentActivityId = "missing";
+
+        var serviceProvider = CreateServiceProvider();
+        var executionCount = 0;
+        var countingTask = new CountingTask(() => executionCount++);
+        var workflowType = new WorkflowType
+        {
+            Id = 1,
+            WorkflowTypeId = IdGenerator.GenerateId(),
+            Activities =
+            [
+                new()
+                {
+                    ActivityId = "1",
+                    IsStart = true,
+                    Name = countingTask.Name,
+                },
+            ],
+            Transitions =
+            [
+                new() { SourceActivityId = "1", SourceOutcomeName = "Done", DestinationActivityId = nonExistentActivityId },
+            ],
+        };
+
+        var workflowManager = CreateWorkflowManager(serviceProvider, [countingTask], workflowType);
+
+        await Assert.ThrowsAsync<NullReferenceException>(() => workflowManager.TriggerEventAsync(countingTask.Name));
+        await Assert.ThrowsAsync<NullReferenceException>(() => workflowManager.TriggerEventAsync(countingTask.Name));
+
+        Assert.Equal(2, executionCount);
+    }
+
+    [Fact]
+    public async Task TriggerEventAsync_ShouldAllowFaultHandlerToTriggerWorkflowAfterActivityError()
+    {
+        var serviceProvider = CreateServiceProvider();
+        var executionCount = 0;
+        var faultTriggerCount = 0;
+        var throwingTask = new ThrowingTask(() => executionCount++);
+        var workflowType = new WorkflowType
+        {
+            Id = 1,
+            WorkflowTypeId = IdGenerator.GenerateId(),
+            Activities =
+            [
+                new()
+                {
+                    ActivityId = "1",
+                    IsStart = true,
+                    Name = throwingTask.Name,
+                },
+            ],
+        };
+
+        var workflowManager = CreateWorkflowManager(serviceProvider, [throwingTask], workflowType, (workflowFaultHandler, manager) =>
+        {
+            workflowFaultHandler
+                .Setup(x => x.OnWorkflowFaultAsync(It.IsAny<IWorkflowManager>(), It.IsAny<WorkflowExecutionContext>(), It.IsAny<ActivityContext>(), It.IsAny<Exception>()))
+                .Returns(async () =>
+                {
+                    if (faultTriggerCount++ == 0)
+                    {
+                        await manager.TriggerEventAsync(throwingTask.Name);
+                    }
+                });
+        });
+
+        await workflowManager.TriggerEventAsync(throwingTask.Name);
+
+        Assert.Equal(2, executionCount);
+        Assert.Equal(2, faultTriggerCount);
+    }
+
     private static ServiceProvider CreateServiceProvider()
     {
         var services = new ServiceCollection();
@@ -83,7 +160,7 @@ public class WorkflowManagerTests
     private static JavaScriptWorkflowScriptEvaluator CreateWorkflowScriptEvaluator(IServiceProvider serviceProvider)
     {
         var memoryCache = new MemoryCache(new MemoryCacheOptions());
-        var javaScriptEngine = new JavaScriptEngine(memoryCache);
+        var javaScriptEngine = new JavaScriptEngine(memoryCache, Options.Create(new Jint.Options()));
         var workflowContextHandlers = new Resolver<IEnumerable<IWorkflowExecutionContextHandler>>(serviceProvider);
         var globalMethodProviders = Array.Empty<IGlobalMethodProvider>();
         var scriptingManager = new DefaultScriptingManager(new[] { javaScriptEngine }, globalMethodProviders);
@@ -98,7 +175,8 @@ public class WorkflowManagerTests
     private static WorkflowManager CreateWorkflowManager(
         IServiceProvider serviceProvider,
         IEnumerable<IActivity> activities,
-        WorkflowType workflowType
+        WorkflowType workflowType,
+        Action<Mock<IWorkflowFaultHandler>, WorkflowManager> configureWorkflowFaultHandler = null
     )
     {
         var workflowValueSerializers = new Resolver<IEnumerable<IWorkflowValueSerializer>>(serviceProvider);
@@ -133,13 +211,71 @@ public class WorkflowManagerTests
             clock.Object
             );
 
+        configureWorkflowFaultHandler?.Invoke(workflowFaultHandler, workflowManager);
+
         foreach (var activity in activities)
         {
             activityLibrary.Setup(x => x.InstantiateActivity(activity.Name)).Returns(activity);
+            activityLibrary.Setup(x => x.GetActivityByName(activity.Name)).Returns(activity);
         }
 
         workflowTypeStore.Setup(x => x.GetAsync(workflowType.Id)).Returns(Task.FromResult(workflowType));
+        workflowTypeStore.Setup(x => x.GetByStartActivityAsync(It.IsAny<string>()))
+            .ReturnsAsync((string activityName) => workflowType.Activities.Any(x => x.IsStart && x.Name == activityName) ? [workflowType] : []);
+        workflowStore.Setup(x => x.ListByActivityNameAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()))
+            .ReturnsAsync([]);
+        workflowStore.Setup(x => x.HasHaltedInstanceAsync(It.IsAny<string>()))
+            .ReturnsAsync(false);
+        workflowStore.Setup(x => x.ListAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()))
+            .ReturnsAsync([]);
 
         return workflowManager;
+    }
+
+    private sealed class CountingTask : TaskActivity<CountingTask>
+    {
+        private readonly Action _onExecute;
+
+        public CountingTask(Action onExecute)
+        {
+            _onExecute = onExecute;
+        }
+
+        public override LocalizedString DisplayText => new(Name, Name);
+
+        public override LocalizedString Category => new("Test", "Test");
+
+        public override IEnumerable<Outcome> GetPossibleOutcomes(WorkflowExecutionContext workflowContext, ActivityContext activityContext)
+        {
+            return Outcomes(new LocalizedString("Done", "Done"));
+        }
+
+        public override Task<ActivityExecutionResult> ExecuteAsync(WorkflowExecutionContext workflowContext, ActivityContext activityContext)
+        {
+            _onExecute();
+
+            return Task.FromResult(Outcomes("Done"));
+        }
+    }
+
+    private sealed class ThrowingTask : TaskActivity<ThrowingTask>
+    {
+        private readonly Action _onExecute;
+
+        public ThrowingTask(Action onExecute)
+        {
+            _onExecute = onExecute;
+        }
+
+        public override LocalizedString DisplayText => new(Name, Name);
+
+        public override LocalizedString Category => new("Test", "Test");
+
+        public override Task<ActivityExecutionResult> ExecuteAsync(WorkflowExecutionContext workflowContext, ActivityContext activityContext)
+        {
+            _onExecute();
+
+            throw new InvalidOperationException("Simulated activity failure");
+        }
     }
 }

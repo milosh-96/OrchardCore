@@ -2,7 +2,6 @@ using System;
 using System.Linq;
 using OrchardCore.DisplayManagement.Manifest;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace OrchardCore.Modules.Manifest;
 
@@ -203,7 +202,7 @@ public class ModuleAttributeTests : ModuleAttributeTests<ModuleAttribute>
         var id = LoremWords(1);
         var name = LoremWords(1);
         var category = LoremWords(1);
-        var priority = DefaultPriority + 1;
+        var priority = 1;
         var description = LoremWords(7);
         var author = LoremWords(2);
         var semVer = string.Join('.', GetValues(1, 2, 3, 4).Select(_ => $"{_}"));
@@ -274,7 +273,7 @@ public class ModuleAttributeTests : ModuleAttributeTests<ModuleAttribute>
         var name = LoremWords(1);
         var type = LoremWords(1);
         var category = LoremWords(1);
-        var priority = DefaultPriority + 1;
+        var priority = 1;
         var description = LoremWords(7);
         var author = LoremWords(2);
         var semVer = string.Join('.', GetValues(1, 2, 3, 4).Select(_ => $"{_}"));
@@ -359,7 +358,7 @@ public class ModuleAttributeTests : ModuleAttributeTests<ModuleAttribute>
 
         var id = "one";
         var description = "two";
-        var category = DefaultCategory;
+        var category = "";
         var author = "three";
         var semVer = "4.5.6";
         var website = LoremAssyAttribIpsumUrl;
@@ -430,7 +429,7 @@ public class ModuleAttributeTests : ModuleAttributeTests<ModuleAttribute>
         var id = "one";
         var name = "two";
         var description = "three";
-        var category = DefaultCategory;
+        var category = "";
         var author = "four";
         var semVer = "5.6.7";
         var website = LoremAssyAttribIpsumUrl;

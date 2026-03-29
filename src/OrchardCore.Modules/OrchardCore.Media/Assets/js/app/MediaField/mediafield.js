@@ -1,8 +1,7 @@
 function initializeMediaField(el, modalBodyElement, mediaItemUrl, allowMultiple, allowMediaText, allowAnchors, allowedExtensions) {
     //BagPart create a script section without other DOM elements
-    if(el === null)
-        return;
-    
+    if (el === null) return;
+
     var target = $(document.getElementById($(el).data('for')));
     var initialPaths = target.data("init");
 
@@ -13,7 +12,7 @@ function initializeMediaField(el, modalBodyElement, mediaItemUrl, allowMultiple,
     //when hide modal detach media app to avoid issue on BagPart
     modalBodyElement.addEventListener('hidden.bs.modal', function (event) {
         $("#mediaApp").appendTo('body');
-        $("#mediaApp").hide();
+        document.getElementById("mediaApp").classList.add("d-none");
     });
 
     mediaFieldApps.push(mediaFieldApp = new Vue({
@@ -45,9 +44,6 @@ function initializeMediaField(el, modalBodyElement, mediaItemUrl, allowMultiple,
                         return JSON.stringify(initialPaths);
                     }
                     this.mediaItems.forEach(function (x) {
-                        if (x.mediaPath === 'not-found') {
-                            return;
-                        }
                         mediaPaths.push({ path: x.mediaPath, mediaText: x.mediaText, anchor: x.anchor });
                     });
                     return JSON.stringify(mediaPaths);
@@ -74,11 +70,24 @@ function initializeMediaField(el, modalBodyElement, mediaItemUrl, allowMultiple,
                                             self.mediaItems.push(y);
                                         });
                                         self.initialized = true;
+
+                                        // Preselect first thumbnail if only single image is allowed
+                                        if (!allowMultiple && self.mediaItems.length === 1) {
+                                            self.$nextTick(function () {
+                                                self.selectedMedia = self.mediaItems[0];
+                                            });
+                                        }
                                     }
                                 },
                                 error: function (error) {
                                     console.log(error);
-                                    items.splice(i, 1, { name: x.path, mime: '', mediaPath: 'not-found', mediaText: '', anchor: { x: 0, y: 0 } });
+                                    var item;
+                                    if (error.status === 404) {
+                                        item = { name: x.path, mime: '', mediaPath: x.path, errorType: 'not-found', mediaText: x.mediaText, anchor: x.anchor };
+                                    } else {
+                                        item = { name: x.path, mime: '', mediaPath: x.path, errorType: 'transient', mediaText: x.mediaText, anchor: x.anchor };
+                                    }
+                                    items.splice(i, 1, item);
                                     if (items.length === ++length) {
                                         items.forEach(function (x) {
                                             self.mediaItems.push(x);
@@ -90,7 +99,7 @@ function initializeMediaField(el, modalBodyElement, mediaItemUrl, allowMultiple,
                         });
                     });
 
-                    
+
                     signal.resolve();
                 }
             },
@@ -144,13 +153,16 @@ function initializeMediaField(el, modalBodyElement, mediaItemUrl, allowMultiple,
                     $('#allowedExtensions').val(this.allowedExtensions);
                     $('#fileupload').attr('accept', this.allowedExtensions);
                     $("#mediaApp").appendTo($(modalBodyElement).find('.modal-body'));
-                    $("#mediaApp").show();
 
                     // Reload current folder in case the allowed extensions have changed.
                     mediaApp.refresh();
 
                     var modal = new bootstrap.Modal(modalBodyElement);
                     modal.show();
+
+                    setTimeout(function () {
+                        document.getElementById("mediaApp").classList.remove("d-none");
+                    }, 100)
 
                     $(modalBodyElement).find('.mediaFieldSelectButton').off('click').on('click', function (v) {
                         self.addMediaFiles(mediaApp.selectedMedias);
@@ -231,9 +243,19 @@ function initializeMediaField(el, modalBodyElement, mediaItemUrl, allowMultiple,
                     alert($('#onlyOneItemMessage').val());
                     mediaFieldApp.mediaItems.push(files[0]);
                     mediaFieldApp.initialized = true;
+                    // Preselect the newly added media item
+                    mediaFieldApp.$nextTick(function() {
+                        mediaFieldApp.selectedMedia = mediaFieldApp.mediaItems[0];
+                    });
                 } else {
                     mediaFieldApp.mediaItems = mediaFieldApp.mediaItems.concat(files);
                     mediaFieldApp.initialized = true;
+                    // Preselect first thumbnail if only single image is allowed
+                    if (!allowMultiple && mediaFieldApp.mediaItems.length === 1) {
+                        mediaFieldApp.$nextTick(function() {
+                            mediaFieldApp.selectedMedia = mediaFieldApp.mediaItems[0];
+                        });
+                    }
                 }
             },
             removeSelected: function (event) {

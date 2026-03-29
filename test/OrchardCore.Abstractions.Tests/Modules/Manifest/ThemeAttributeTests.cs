@@ -4,7 +4,6 @@ using System;
 using System.Linq;
 using OrchardCore.Modules.Manifest;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace OrchardCore.DisplayManagement.Manifest;
 /// <inheritdoc/>
@@ -222,7 +221,7 @@ public class ThemeAttributeTests : ModuleAttributeTests<ThemeAttribute>
         var name = LoremWords(1);
         var baseTheme = LoremWords(1);
         var category = LoremWords(1);
-        var priority = DefaultPriority + 1;
+        var priority = 1;
         var description = LoremWords(7);
         var author = LoremWords(2);
         var semVer = string.Join('.', GetValues(1, 2, 3, 4).Select(_ => $"{_}"));

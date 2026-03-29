@@ -17,6 +17,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OrchardCore.Apis.GraphQL.Queries;
 using OrchardCore.Apis.GraphQL.ValidationRules;
+using OrchardCore.Infrastructure;
 using OrchardCore.Routing;
 
 namespace OrchardCore.Apis.GraphQL;
@@ -29,8 +30,8 @@ public class GraphQLMiddleware : IMiddleware
     private readonly IGraphQLSerializer _serializer;
     private readonly IDocumentExecuter _executer;
     internal static readonly Encoding _utf8Encoding = new UTF8Encoding(false);
-    private static readonly MediaType _jsonMediaType = new("application/json");
-    private static readonly MediaType _graphQlMediaType = new("application/graphql");
+    private static readonly MediaType _jsonMediaType = new(MediaTypeNames.Application.Json);
+    private static readonly MediaType _graphQlMediaType = new(MediaTypeNamesExtended.Application.GraphQL);
 
     public GraphQLMiddleware(
         IOptions<GraphQLSettings> settingsOption,
@@ -45,33 +46,40 @@ public class GraphQLMiddleware : IMiddleware
         _graphQLTextSerializer = graphQLTextSerializer;
         _logger = logger;
     }
-    public async Task InvokeAsync(HttpContext context, RequestDelegate next)
+
+    public Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
         if (!IsGraphQLRequest(context))
         {
-            await next(context);
+            return next(context);
         }
         else
         {
-            var authenticationService = context.RequestServices.GetService<IAuthenticationService>();
-            var authenticateResult = await authenticationService.AuthenticateAsync(context, "Api");
-            if (authenticateResult.Succeeded)
-            {
-                context.User = authenticateResult.Principal;
-            }
-            var authorizationService = context.RequestServices.GetService<IAuthorizationService>();
-            var authorized = await authorizationService.AuthorizeAsync(context.User, CommonPermissions.ExecuteGraphQL);
-
-            if (authorized)
-            {
-                await ExecuteAsync(context);
-            }
-            else
-            {
-                await context.ChallengeAsync("Api");
-            }
+            return ProcessGraphQLRequestAsync(context);
         }
     }
+
+    private async Task ProcessGraphQLRequestAsync(HttpContext context)
+    {
+        var authenticationService = context.RequestServices.GetService<IAuthenticationService>();
+        var authenticateResult = await authenticationService.AuthenticateAsync(context, "Api");
+        if (authenticateResult.Succeeded)
+        {
+            context.User = authenticateResult.Principal;
+        }
+        var authorizationService = context.RequestServices.GetService<IAuthorizationService>();
+        var authorized = await authorizationService.AuthorizeAsync(context.User, GraphQLPermissions.ExecuteGraphQL);
+
+        if (authorized)
+        {
+            await ExecuteAsync(context);
+        }
+        else
+        {
+            await context.ChallengeAsync("Api");
+        }
+    }
+
     private bool IsGraphQLRequest(HttpContext context)
     {
         return context.Request.Path.StartsWithNormalizedSegments(_settings.Path, StringComparison.OrdinalIgnoreCase);
@@ -96,7 +104,7 @@ public class GraphQLMiddleware : IMiddleware
                     {
                         request = new GraphQLNamedQueryRequest
                         {
-                            Query = await sr.ReadToEndAsync()
+                            Query = await sr.ReadToEndAsync(),
                         };
                     }
                     else
@@ -151,13 +159,13 @@ public class GraphQLMiddleware : IMiddleware
             options.Variables = request.Variables;
             options.UserContext = _settings.BuildUserContext?.Invoke(context);
             options.ValidationRules = DocumentValidator.CoreRules
-                .Concat(context.RequestServices.GetServices<IValidationRule>())
-                .Append(new ComplexityValidationRule(new ComplexityConfiguration
-                {
-                    MaxDepth = _settings.MaxDepth,
-                    MaxComplexity = _settings.MaxComplexity,
-                    FieldImpact = _settings.FieldImpact
-                }));
+            .Concat(context.RequestServices.GetServices<IValidationRule>())
+            .Append(new ComplexityValidationRule(new ComplexityOptions
+            {
+                MaxDepth = _settings.MaxDepth,
+                MaxComplexity = _settings.MaxComplexity,
+                DefaultObjectImpact = _settings.FieldImpact ?? 0,
+            }));
             options.Listeners.Add(dataLoaderDocumentListener);
             options.RequestServices = context.RequestServices;
         });
@@ -187,7 +195,7 @@ public class GraphQLMiddleware : IMiddleware
 
         var request = new GraphQLNamedQueryRequest
         {
-            Query = context.Request.Query["query"]
+            Query = context.Request.Query["query"],
         };
 
         if (context.Request.Query.ContainsKey("variables"))

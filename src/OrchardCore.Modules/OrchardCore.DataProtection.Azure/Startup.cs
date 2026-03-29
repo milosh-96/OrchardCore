@@ -1,7 +1,9 @@
 using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OrchardCore.Environment.Shell.Configuration;
@@ -29,11 +31,26 @@ public sealed class Startup : StartupBase
 
         if (!string.IsNullOrWhiteSpace(connectionString))
         {
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("OrchardCore_DataProtection_Azure:ConnectionString was found. Adding 'OrchardCore.DataProtection.Azure' feature services.");
+            }
+
+            // Remove any previously registered options setups.
+            services.RemoveAll<IConfigureOptions<KeyManagementOptions>>();
+
             services
                 .AddDataProtection()
                 .PersistKeysToAzureBlobStorage(sp =>
                 {
                     var options = sp.GetRequiredService<IOptions<BlobOptions>>().Value;
+
+                    var logger = sp.GetRequiredService<ILogger<Startup>>();
+
+                    if (logger.IsEnabled(LogLevel.Debug))
+                    {
+                        logger.LogDebug("Creating BlobClient instance using '{ContainerName}' as container name and '{BlobName}' as blob name.", options.ContainerName, options.BlobName);
+                    }
 
                     return new BlobClient(
                         options.ConnectionString,

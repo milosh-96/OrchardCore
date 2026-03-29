@@ -6,7 +6,7 @@ using YesSql.Filters.Query;
 
 namespace OrchardCore.ContentLocalization.Services;
 
-public class LocalizationPartContentsAdminListFilterProvider : IContentsAdminListFilterProvider
+public sealed class LocalizationPartContentsAdminListFilterProvider : IContentsAdminListFilterProvider
 {
     public void Build(QueryEngineBuilder<ContentItem> builder)
     {
@@ -16,7 +16,8 @@ public class LocalizationPartContentsAdminListFilterProvider : IContentsAdminLis
                 {
                     if (!string.IsNullOrEmpty(val))
                     {
-                        query.With<LocalizedContentItemIndex>(i => (i.Published || i.Latest) && i.Culture == val);
+                        var normalized = val.ToLowerInvariant();
+                        query.With<LocalizedContentItemIndex>(i => (i.Published || i.Latest) && i.Culture == normalized);
                     }
 
                     return query;

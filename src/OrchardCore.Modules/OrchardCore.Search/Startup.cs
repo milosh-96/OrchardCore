@@ -1,52 +1,43 @@
 using Fluid;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using OrchardCore.ContentManagement;
 using OrchardCore.ContentManagement.Display.ContentDisplay;
 using OrchardCore.Data.Migration;
 using OrchardCore.Deployment;
 using OrchardCore.DisplayManagement.Handlers;
+using OrchardCore.Localization.Data;
 using OrchardCore.Modules;
-using OrchardCore.Mvc.Core.Utilities;
 using OrchardCore.Navigation;
-using OrchardCore.Search.Configuration;
 using OrchardCore.Search.Deployment;
 using OrchardCore.Search.Drivers;
 using OrchardCore.Search.Migrations;
 using OrchardCore.Search.Models;
+using OrchardCore.Search.Services;
 using OrchardCore.Search.ViewModels;
 using OrchardCore.Security.Permissions;
 
 namespace OrchardCore.Search;
 
-/// <summary>
-/// These services are registered on the tenant service collection.
-/// </summary>
 public sealed class Startup : StartupBase
 {
     public override void ConfigureServices(IServiceCollection services)
     {
-        services.AddTransient<IConfigureOptions<SearchSettings>, SearchSettingsConfiguration>();
-        services.AddNavigationProvider<AdminMenu>();
         services.AddPermissionProvider<Permissions>();
+        services.AddNavigationProvider<AdminMenu>();
         services.AddSiteDisplayDriver<SearchSettingsDisplayDriver>();
-
-        services.AddContentPart<SearchFormPart>()
-                .UseDisplayDriver<SearchFormPartDisplayDriver>();
-
-        services.AddDataMigration<SearchMigrations>();
     }
+}
 
-    public override void Configure(IApplicationBuilder app, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
+[RequireFeatures("OrchardCore.Contents")]
+public sealed class ContentsStartup : StartupBase
+{
+    public override void ConfigureServices(IServiceCollection services)
     {
-        routes.MapAreaControllerRoute(
-            name: "Search",
-            areaName: "OrchardCore.Search",
-            pattern: "search/{index?}",
-            defaults: new { controller = typeof(SearchController).ControllerName(), action = nameof(SearchController.Search) }
-        );
+        services.AddDataMigration<SearchMigrations>();
+
+        services
+            .AddContentPart<SearchFormPart>()
+            .UseDisplayDriver<SearchFormPartDisplayDriver>();
     }
 }
 
@@ -70,5 +61,14 @@ public sealed class LiquidStartup : StartupBase
             o.MemberAccessStrategy.Register<SearchFormViewModel>();
             o.MemberAccessStrategy.Register<SearchResultsViewModel>();
         });
+    }
+}
+
+[RequireFeatures("OrchardCore.DataLocalization")]
+public sealed class DataLocalizationStartup : StartupBase
+{
+    public override void ConfigureServices(IServiceCollection services)
+    {
+        services.AddScoped<ILocalizationDataProvider, SearchLocalizationDataProvider>();
     }
 }

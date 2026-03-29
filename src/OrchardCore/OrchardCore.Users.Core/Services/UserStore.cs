@@ -58,7 +58,6 @@ public class UserStore :
 
     public void Dispose()
     {
-        GC.SuppressFinalize(this);
     }
 
     public string NormalizeKey(string key)
@@ -110,7 +109,7 @@ public class UserStore :
                 return IdentityResult.Failed();
             }
 
-            await _session.SaveAsync(user);
+            await _session.SaveAsync(user, cancellationToken: cancellationToken);
             await _session.FlushAsync(cancellationToken);
             await Handlers.InvokeAsync((handler, context) => handler.CreatedAsync(context), context, _logger);
         }
@@ -231,7 +230,7 @@ public class UserStore :
                 return IdentityResult.Failed();
             }
 
-            await _session.SaveAsync(user);
+            await _session.SaveAsync(user, cancellationToken: cancellationToken);
             await _session.FlushAsync(cancellationToken);
             await Handlers.InvokeAsync((handler, context) => handler.UpdatedAsync(context), context, _logger);
         }
@@ -686,7 +685,7 @@ public class UserStore :
             userToken = new UserToken
             {
                 LoginProvider = loginProvider,
-                Name = name
+                Name = name,
             };
 
             u.UserTokens.Add(userToken);

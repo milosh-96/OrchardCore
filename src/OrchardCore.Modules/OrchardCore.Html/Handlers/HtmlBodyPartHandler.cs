@@ -43,7 +43,7 @@ public class HtmlBodyPartHandler : ContentPartHandler<HtmlBodyPart>
 
                 var html = part.Html;
 
-                if (!settings.SanitizeHtml)
+                if (settings.RenderLiquid)
                 {
                     var model = new HtmlBodyPartViewModel()
                     {
@@ -60,7 +60,7 @@ public class HtmlBodyPartHandler : ContentPartHandler<HtmlBodyPart>
                     new Context
                     {
                         ["ContentItem"] = part.ContentItem,
-                        ["TypePartDefinition"] = contentTypePartDefinition
+                        ["TypePartDefinition"] = contentTypePartDefinition,
                     });
 
                 bodyAspect.Body = new HtmlString(html);

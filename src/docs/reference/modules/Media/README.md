@@ -187,6 +187,9 @@ Appends a version hash for an asset. Can be piped together with the other media 
 
 ## Razor Helpers
 
+!!! note
+    When using tag helpers in Razor, you must take a direct reference to the `OrchardCore.Media` NuGet package in each theme or module that uses the tag helpers. This is not required when using Liquid.
+
 To obtain the correct URL for an asset, use the `AssetUrl` helper extension method on the view's base `Orchard` property, e.g.:
 
 `@Orchard.AssetUrl(Model.Paths[0])`
@@ -195,11 +198,11 @@ To obtain the correct URL for a resized asset use `AssetUrl` with the optional w
 
 `@Orchard.AssetUrl(Model.Paths[0], width: 100 , height: 240, resizeMode: ResizeMode.Crop)`
 
-To obtain the correct URL for a resized asset use `AssetUrl` with the optional width, height, resizeMode, quality and format parameters, e.g.:
+To obtain the correct URL for a resized asset use `AssetUrl` with the optional `width`, `height`, `resizeMode`, `quality` and `format` parameters, e.g.:
 
 `@Orchard.AssetUrl(Model.Paths[0], width: 100 , height: 240, resizeMode: ResizeMode.Crop, quality: 50, format: Format.Jpg)`
 
-To obtain the correct URL for a resized asset use `AssetUrl` with the optional width, height, resizeMode and bgcolor, e.g.:
+To obtain the correct URL for a resized asset use `AssetUrl` with the optional `width`, `height`, `resizeMode` and `bgcolor`, e.g.:
 
 `@Orchard.AssetUrl(Model.Paths[0], width: 100 , height: 240, resizeMode: ResizeMode.Pad, bgcolor: "white")`
 
@@ -267,8 +270,31 @@ Or when using the MVC tag helpers and the image is resolved from static assets, 
 
 > The Razor Helper is accessible on the `Orchard` property if the view is using Orchard Core's Razor base class, or by injecting `OrchardCore.IOrchardHelper` in all other cases.
 
+### Razor Anchor Tag Helper
+
+The `AnchorTagHelper` in the Media module allows you to generate links (`<a>`) to files in the Media Library using logical paths, automatically resolving the correct URL.
+
+
+`asset-href` attribute is used to specify a logical path in the Media Library. It will be converted to a public `href` URL at render time, e.g.:
+
+`<a asset-href="demo/site-gusta-la-oscuridad-Libro.png" class="btn btn-link btn-sm view-button">View</a>`
+
+Rendered HTML:
+
+`<a href="/media/demo/site-gusta-la-oscuridad-Libro.png?v=-xU7_qsnn4HeHXjHT1gPmep-7Ik68F_ZKYcNO9ChXXg" class="btn btn-link btn-sm view-button"> View </a>`
+
+`target` defines where the link will open. By default, it behaves like a normal `<a>` tag (`_self`), but you can set `_blank` to open in a new tab, e.g.:
+
+`<a href="demo/site-gusta-la-oscuridad-Libro.png?v=-xU7_qsnn4HeHXjHT1gPmep-7Ik68F_ZKYcNO9ChXXg" target="_blank" class="btn btn-link btn-sm view-button"> View </a>`
+
+Rendered HTML:
+
+`<a href="/media/demo/site-gusta-la-oscuridad-Libro.png?v=-xU7_qsnn4HeHXjHT1gPmep-7Ik68F_ZKYcNO9ChXXg" target="_blank" class="btn btn-link btn-sm view-button"> View </a>`
+
 !!! note
-    When using tag helpers in Razor, you must take a direct reference to the `OrchardCore.Media` nuget package in each theme or module that uses the tag helpers. This is not required when using Liquid.
+    - The generated URL includes a version query string for cache busting.
+    - You can use standard HTML attributes like `class`, `target`, `rel`, etc.
+
 
 ## Deployment Step Editor
 
@@ -284,90 +310,98 @@ Keep these things in mind when working with the deployment step editor:
 The following configuration values are used by default and can be customized:
 
 ```json
-    "OrchardCore_Media": {
+{
+  "OrchardCore_Media": {
+    // The accepted sizes for custom width and height.
+    // When the 'UseTokenizedQueryString' is True (default) all sizes are valid.
+    "SupportedSizes": [
+      16,
+      32,
+      50,
+      100,
+      160,
+      240,
+      480,
+      600,
+      1024,
+      2048
+    ],
+    // The number of days to store images in the browser cache.
+    // NB: To control cache headers for module static assets, refer to the Orchard Core Modules Section.
+    "MaxBrowserCacheDays": 30,
+    // The number of days to store secure media files in the browser cache.
+    // Set to 0 (default) to disable caching secure files.
+    "MaxSecureFilesBrowserCacheDays": 0,
+    // The number of days a cached resized media item will be valid for, before being rebuilt on request.
+    "MaxCacheDays": 365,
+    // The maximum size of an uploaded file in bytes. 
+    // NB: You might still need to configure the limit in IIS (https://docs.microsoft.com/en-us/iis/configuration/system.webserver/security/requestfiltering/requestlimits/)
+    "MaxFileSize": 30000000,
+    // A CDN base url that will be prefixed to the request path when serving images.
+    "CdnBaseUrl": "https://your-cdn.com",
+    // The path used when serving media assets.
+    "AssetsRequestPath": "/media",
+    // The name of the folder used to store media assets inside the App_Data folder.
+    "AssetsPath": "Media",
+    // Whether to use a token in the query string to prevent disc filling.
+    "UseTokenizedQueryString": true,
+    // The list of allowed file extensions
+    "AllowedFileExtensions": [
+      // Images
+      ".jpg",
+      ".jpeg",
+      ".png",
+      ".gif",
+      ".ico",
+      ".svg",
+      // Documents
+      ".pdf",
+      // Portable Document Format; Adobe Acrobat
+      ".doc",
+      // Microsoft Word Document
+      ".docx",
+      ".ppt",
+      // Microsoft PowerPoint Presentation
+      ".pptx",
+      ".pps",
+      ".ppsx",
+      ".odt",
+      // OpenDocument Text Document
+      ".xls",
+      // Microsoft Excel Document
+      ".xlsx",
+      ".psd",
+      // Adobe Photoshop Document
 
-      // The accepted sizes for custom width and height.
-      // When the 'UseTokenizedQueryString' is True (default) all sizes are valid.
-      "SupportedSizes": [ 16, 32, 50, 100, 160, 240, 480, 600, 1024, 2048 ],
-
-      // The number of days to store images in the browser cache.
-      // NB: To control cache headers for module static assets, refer to the Orchard Core Modules Section.
-      "MaxBrowserCacheDays": 30,
-
-      // The number of days to store secure media files in the browser cache.
-      // Set to 0 (default) to disable caching secure files.
-      "MaxSecureFilesBrowserCacheDays": 0,
-
-      // The number of days a cached resized media item will be valid for, before being rebuilt on request.
-      "MaxCacheDays": 365,
-
-      // The maximum size of an uploaded file in bytes. 
-      // NB: You might still need to configure the limit in IIS (https://docs.microsoft.com/en-us/iis/configuration/system.webserver/security/requestfiltering/requestlimits/)
-      "MaxFileSize": 30000000,
-
-      // A CDN base url that will be prefixed to the request path when serving images.
-      "CdnBaseUrl": "https://your-cdn.com",
-
-      // The path used when serving media assets.
-      "AssetsRequestPath": "/media",
-
-      // The name of the folder used to store media assets inside the App_Data folder.
-      "AssetsPath": "Media",
-
-      // Whether to use a token in the query string to prevent disc filling.
-      "UseTokenizedQueryString": true,
-
-      // The list of allowed file extensions
-      "AllowedFileExtensions": [
-
-            // Images
-            ".jpg",
-            ".jpeg",
-            ".png",
-            ".gif",
-            ".ico",
-            ".svg",
-
-            // Documents
-            ".pdf", // Portable Document Format; Adobe Acrobat
-            ".doc", // Microsoft Word Document
-            ".docx",
-            ".ppt", // Microsoft PowerPoint Presentation
-            ".pptx",
-            ".pps",
-            ".ppsx",
-            ".odt", // OpenDocument Text Document
-            ".xls", // Microsoft Excel Document
-            ".xlsx",
-            ".psd", // Adobe Photoshop Document
-
-            // Audio
-            ".mp3",
-            ".m4a",
-            ".ogg",
-            ".wav",
-
-            // Video
-            ".mp4", // MPEG-4
-            ".m4v",
-            ".mov", // QuickTime
-            ".wmv", // Windows Media Video
-            ".avi",
-            ".mpg",
-            ".ogv", // Ogg
-            ".3gp", // 3GPP
-            ".webm",
-        ],
-
-      // The Content Security Policy to apply to assets served from the media library.
-      "ContentSecurityPolicy" : "default-src 'self'; style-src 'unsafe-inline'",
-
-      // The maximum chunk size when uploading files in bytes. If 0, no chunked upload is used. This is useful to work around request size limitations of a hosting environment.
-      "MaxUploadChunkSize": 104857600,
-
-      // The lifetime of temporary files created during upload. Defaults to 1 hour.
-      "TemporaryFileLifetime": "01:00:00"
-    }
+      // Audio
+      ".mp3",
+      ".m4a",
+      ".ogg",
+      ".wav",
+      // Video
+      ".mp4",
+      // MPEG-4
+      ".m4v",
+      ".mov",
+      // QuickTime
+      ".wmv",
+      // Windows Media Video
+      ".avi",
+      ".mpg",
+      ".ogv",
+      // Ogg
+      ".3gp",
+      // 3GPP
+      ".webm"
+    ],
+    // The Content Security Policy to apply to assets served from the media library.
+    "ContentSecurityPolicy": "default-src 'self'; style-src 'unsafe-inline'",
+    // The maximum chunk size when uploading files in bytes. If 0, no chunked upload is used. This is useful to work around request size limitations of a hosting environment.
+    "MaxUploadChunkSize": 104857600,
+    // The lifetime of temporary files created during upload. Defaults to 1 hour.
+    "TemporaryFileLifetime": "01:00:00"
+  }
+}
 ```
 
 To configure the `StaticFileOptions` in more detail, including event handlers, for the Media Library `StaticFileMiddleware` apply:
@@ -395,7 +429,7 @@ services.Configure<StaticFileOptions>(o => ...);
 
 Media profiles allow you to defined preset image resizing and formatting commands.
 
-You can create a media profile from the _Configuration -> Media -> Media Profiles_ menu.
+You can create a media profile from the _Media -> Profiles_ menu.
 
 When specifying a media profile with either the liquid, razor helper, or tag helper you provide the profile name, and any additional commands which you want to apply to the media item.
 

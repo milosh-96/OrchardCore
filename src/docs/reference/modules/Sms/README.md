@@ -4,19 +4,19 @@ This module provides SMS settings configuration.
 
 ## SMS Settings
 
-Enabling the `SMS` feature will add a new settings page under `Configurations` >> `Settings` >> `SMS`. You can utilize these settings to set up the default SMS provider configuration. The following are the providers that are readily accessible.
+Enabling the `SMS` feature will add a new settings page under `Settings` → `Communication` → `SMS`. You can utilize these settings to set up the default SMS provider configuration. The following are the providers that are readily accessible.
 
-| Provider | Description |
-| --- | --- |
-| `Log` | This particular provider is exclusively meant for debugging purposes and should never be used in a production environment. It permits the message to be written to the logs. |
-| `Twilio` | Opting for this provider enables the utilization of Twilio service for sending SMS messages. Edit the SMS settings to enable this provider. |
+| Provider | Description                                                                                                                                                                  |
+|----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Log`    | This particular provider is exclusively meant for debugging purposes and should never be used in a production environment. It permits the message to be written to the logs. |
+| `Twilio` | Opting for this provider enables the utilization of Twilio service for sending SMS messages. Edit the SMS settings to enable this provider.                                  |
 
 !!! note
     After enabling the SMS feature, you must configure the default provider in order to send SMS messages.
 
 ## Configuring the Twilio Providers
 
-To enable the [Twilio](https://www.twilio.com) provider, navigate to `Configurations` >> `Settings` >> `SMS`. Click on the `Twilio` tab, click the Enable checkbox and provider your Twilio account info. Then in the `Providers` tab, select Twilio as your default provider.
+To enable the [Twilio](https://www.twilio.com) provider, navigate to `Settings` → `Communication` → `SMS`. Click on the `Twilio` tab, click the Enable checkbox and provider your Twilio account info. Then in the `Providers` tab, select Twilio as your default provider.
 
 ## Additional Available Providers
 

@@ -188,18 +188,6 @@ public static class StringExtensions
         return name;
     }
 
-    [Obsolete("Use Char.IsLetter() instead.")]
-    public static bool IsLetter(this char c)
-    {
-        return ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z');
-    }
-
-    [Obsolete("Use Char.IsWhiteSpace() instead.")]
-    public static bool IsSpace(this char c)
-    {
-        return c == '\r' || c == '\n' || c == '\t' || c == '\f' || c == ' ';
-    }
-
     public static bool IsReservedContentName(this string name) => _reservedNames.Contains(name);
 
     public static string RemoveDiacritics(this string name)
@@ -343,21 +331,6 @@ public static class StringExtensions
         return Regex.Replace(original, pattern, match => replacements[match.Value]);
     }
 
-#if NET8_0
-    [Obsolete("Don't use 'TrimEnd' as this has a different behavior in .NET 9.0. Use 'OrchardCore.ContentManagement.Utilities.TrimEndString' instead.")]
-    public static string TrimEnd(this string value, string trim = "")
-    {
-        if (value == null)
-        {
-            return null;
-        }
-
-        return value.EndsWith(trim, StringComparison.Ordinal)
-            ? value[..^trim.Length]
-            : value;
-    }
-#endif
-
     public static string TrimEndString(this string value, string suffix)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -384,5 +357,28 @@ public static class StringExtensions
         }
 
         return source.Remove(lastIndex, searchedValue.Length).Insert(lastIndex, replacedValue);
+    }
+
+    private const string _validHtmlInputNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.[]";
+
+    public static string GetSafeHTMLInputName(this string input)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(input);
+
+        var inputSpan = input.AsSpan();
+
+        var sanitizedName = new StringBuilder(inputSpan.Length);
+
+        foreach (var c in inputSpan)
+        {
+            if (!_validHtmlInputNameCharacters.Contains(c))
+            {
+                continue;
+            }
+
+            sanitizedName.Append(c);
+        }
+
+        return sanitizedName.ToString();
     }
 }

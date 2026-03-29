@@ -5,17 +5,23 @@ namespace OrchardCore.AdminMenu;
 
 public sealed class Permissions : IPermissionProvider
 {
-    public static readonly Permission ManageAdminMenu = new("ManageAdminMenu", "Manage the admin menu");
-    public static readonly Permission ViewAdminMenuAll = new("ViewAdminMenuAll", "View Admin Menu - View All", new[] { ManageAdminMenu });
-
-    private static readonly Permission _viewAdminMenu = new("ViewAdminMenu_{0}", "View Admin Menu - {0}", new[] { ManageAdminMenu, ViewAdminMenuAll });
+    private static readonly Permission _viewAdminMenu = new("ViewAdminMenu_{0}", "View Admin Menu - {0}", new[] {
+        AdminMenuPermissions.ManageAdminMenu,
+        AdminMenuPermissions.ViewAdminMenuAll,
+    });
 
     private readonly IEnumerable<Permission> _generalPermissions =
     [
-        ManageAdminMenu,
+        AdminMenuPermissions.ManageAdminMenu,
     ];
 
     private readonly IAdminMenuService _adminMenuService;
+
+    [Obsolete("This will be removed in a future release. Instead use 'AdminMenuPermissions.ViewAdminMenuAll'.")]
+    public static readonly Permission ManageAdminMenu = AdminMenuPermissions.ViewAdminMenuAll;
+
+    [Obsolete("This will be removed in a future release. Instead use 'AdminMenuPermissions.ManageAdminMenu'.")]
+    public static readonly Permission ViewAdminMenuAll = AdminMenuPermissions.ManageAdminMenu;
 
     public Permissions(IAdminMenuService adminMenuService)
     {
@@ -28,8 +34,8 @@ public sealed class Permissions : IPermissionProvider
 
         var permissions = new List<Permission>(adminMenuItems.Count + 2)
         {
-            ViewAdminMenuAll,
-            ManageAdminMenu,
+            AdminMenuPermissions.ViewAdminMenuAll,
+            AdminMenuPermissions.ManageAdminMenu,
         };
 
         foreach (var adminMenu in adminMenuItems)

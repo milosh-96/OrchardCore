@@ -21,7 +21,7 @@ public class FeaturesProvider : IFeaturesProvider
         var featuresInfos = new List<IFeatureInfo>();
 
         // Features and Dependencies live within this section
-        var features = manifestInfo.ModuleInfo.Features.ToList();
+        var features = manifestInfo.ModuleInfo.Features;
         if (features.Count > 0)
         {
             foreach (var feature in features)
@@ -58,7 +58,7 @@ public class FeaturesProvider : IFeaturesProvider
                     FeatureDependencyIds = featureDependencyIds,
                     DefaultTenantOnly = featureDefaultTenantOnly,
                     IsAlwaysEnabled = featureIsAlwaysEnabled,
-                    EnabledByDependencyOnly = featureEnabledByDependencyOnly
+                    EnabledByDependencyOnly = featureEnabledByDependencyOnly,
                 };
 
                 foreach (var builder in _featureBuilderEvents)

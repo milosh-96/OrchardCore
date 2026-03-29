@@ -7,7 +7,7 @@ using OrchardCore.Scripting;
 
 namespace OrchardCore.Contents.Scripting;
 
-public class ContentMethodsProvider : IGlobalMethodProvider
+public sealed class ContentMethodsProvider : IGlobalMethodProvider
 {
     private readonly GlobalMethod _newContentItemMethod;
     private readonly GlobalMethod _createContentItemMethod;
@@ -36,15 +36,19 @@ public class ContentMethodsProvider : IGlobalMethodProvider
                 var contentManager = serviceProvider.GetRequiredService<IContentManager>();
                 var contentItem = contentManager.NewAsync(contentType).GetAwaiter().GetResult();
                 contentItem.Merge(properties);
-                var result = contentManager.UpdateValidateAndCreateAsync(contentItem, publish == true ? VersionOptions.Published : VersionOptions.Draft).GetAwaiter().GetResult();
+
+                var result = contentManager.ValidateAsync(contentItem).GetAwaiter().GetResult();
+
                 if (result.Succeeded)
                 {
+                    contentManager.CreateAsync(contentItem, publish == true ? VersionOptions.Published : VersionOptions.Draft).GetAwaiter().GetResult();
+
                     return contentItem;
                 }
-                else
-                {
-                    throw new ValidationException(string.Join(", ", result.Errors));
-                }
+
+                var session = serviceProvider.GetRequiredService<YesSql.ISession>();
+                session.CancelAsync().GetAwaiter().GetResult();
+                throw new ValidationException(string.Join(", ", result.Errors));
             }),
         };
 
@@ -59,6 +63,8 @@ public class ContentMethodsProvider : IGlobalMethodProvider
                 var result = contentManager.ValidateAsync(contentItem).GetAwaiter().GetResult();
                 if (!result.Succeeded)
                 {
+                    var session = serviceProvider.GetRequiredService<YesSql.ISession>();
+                    session.CancelAsync().GetAwaiter().GetResult();
                     throw new ValidationException(string.Join(", ", result.Errors));
                 }
             }),

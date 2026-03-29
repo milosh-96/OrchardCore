@@ -56,7 +56,7 @@ Cultures can be added during recipes using the settings step. Here is a sample s
     "DefaultCulture":  "fr",
     "SupportedCultures": [ "fr", "en" ]
   }
-},
+}
 ```
 
 ### Examples
@@ -173,6 +173,10 @@ Then, you will be able to run this command to generate the .po files:
 ``` bash
 extractpo <INTPUT_PATH> <OUTPUT_PATH> [-l|--language {"C#"|"VB"}] [-t|--template {"razor"|"liquid"}]
 ```
+
+## JavaScript Localization
+
+See [JavaScript Localization (`IJSLocalizer`)](javascript-localization.md) for guidance on exposing PO-file-backed translations to JavaScript / TypeScript assets.
 
 ## Video
 

@@ -8,7 +8,7 @@
 - Meta Login
 - Meta Widgets
 
-Configuration can be set through the _Configuration -> Meta_ settings menu in the admin dashboard.
+Configuration can be set through the _Settings -> Integrations -> Meta App_ settings menu in the admin dashboard.
 
 ## Core Components
 
@@ -62,7 +62,7 @@ It defines the following widgets:
 
 ## Meta Pixel
 
-This feature provides you a way to add Meta Pixel tracking to your site. Simply navigate to _Configuration -> Settings -> Meta Pixel_ settings and provide your `Pixel Identifier`.
+This feature provides you a way to add Meta Pixel tracking to your site. Simply navigate to _Settings -> Integrations -> Meta Pixel_ settings and provide your `Pixel Identifier`.
 
 ## Meta Settings Configuration
 
@@ -71,16 +71,16 @@ The `OrchardCore.Facebook` module allows the user to use configuration values to
 The following configuration values can be customized:
 
 ```json
-    "OrchardCore_Facebook": {
-      "AppId": "",
-      "AppSecret": "",
-      "FBInit": false,
-      "FBInitParams": "status:true,
-xfbml:true,
-autoLogAppEvents:true",
-      "SdkJs": "sdk.js",
-      "Version": "v3.2"
-    }
+{
+  "OrchardCore_Facebook": {
+    "AppId": "",
+    "AppSecret": "",
+    "FBInit": false,
+    "FBInitParams": "status:true,xfbml:true,autoLogAppEvents:true",
+    "SdkJs": "sdk.js",
+    "Version": "v3.2"
+  }
+}
 ```
 
-For more information please refer to [Configuration](../../core/Configuration/README.md).
+For more information please refer to [Configuration](../Configuration/README.md).

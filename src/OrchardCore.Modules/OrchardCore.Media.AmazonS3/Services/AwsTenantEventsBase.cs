@@ -41,14 +41,20 @@ public abstract class AwsTenantEventsBase : ModularTenantEvents
             return;
         }
 
-        _logger.LogDebug("Testing Amazon S3 Bucket {BucketName} existence", _options.BucketName);
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug("Testing Amazon S3 Bucket {BucketName} existence", _options.BucketName);
+        }
 
         try
         {
             var bucketExists = await AmazonS3Util.DoesS3BucketExistV2Async(_amazonS3Client, _options.BucketName);
             if (bucketExists)
             {
-                _logger.LogInformation("Amazon S3 Bucket {BucketName} already exists.", _options.BucketName);
+                if (_logger.IsEnabled(LogLevel.Information))
+                {
+                    _logger.LogInformation("Amazon S3 Bucket {BucketName} already exists.", _options.BucketName);
+                }
 
                 return;
             }
@@ -56,7 +62,7 @@ public abstract class AwsTenantEventsBase : ModularTenantEvents
             var bucketRequest = new PutBucketRequest
             {
                 BucketName = _options.BucketName,
-                UseClientRegion = true
+                UseClientRegion = true,
             };
 
             // Trying to create bucket.
@@ -75,16 +81,19 @@ public abstract class AwsTenantEventsBase : ModularTenantEvents
                 BlockPublicAcls = true,
                 BlockPublicPolicy = true,
                 IgnorePublicAcls = true,
-                RestrictPublicBuckets = true
+                RestrictPublicBuckets = true,
             };
 
             await _amazonS3Client.PutPublicAccessBlockAsync(new PutPublicAccessBlockRequest
             {
                 PublicAccessBlockConfiguration = blockConfiguration,
-                BucketName = _options.BucketName
+                BucketName = _options.BucketName,
             });
 
-            _logger.LogDebug("Amazon S3 Bucket {BucketName} created.", _options.BucketName);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Amazon S3 Bucket {BucketName} created.", _options.BucketName);
+            }
         }
         catch (AmazonS3Exception ex)
         {
@@ -110,7 +119,7 @@ public abstract class AwsTenantEventsBase : ModularTenantEvents
             var bucketRequest = new DeleteBucketRequest
             {
                 BucketName = _options.BucketName,
-                UseClientRegion = true
+                UseClientRegion = true,
             };
 
             // Trying to delete bucket.

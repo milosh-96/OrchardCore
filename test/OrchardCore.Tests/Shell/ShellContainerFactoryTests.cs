@@ -33,11 +33,14 @@ public class ShellContainerFactoryTests
         applicationServices.AddSingleton<IHostSingletonAndScopedOfTheSameType, HostSingletonOfTheSameTypeAsScoped>();
         applicationServices.AddScoped<IHostSingletonAndScopedOfTheSameType, HostScopedOfTheSameTypeAsSingleton>();
 
+        var loggerMock = new Mock<ILogger<ShellContainerFactory>>();
+
         _shellContainerFactory = new ShellContainerFactory(
             new StubHostingEnvironment(),
             new StubExtensionManager(),
             _applicationServiceProvider = applicationServices.BuildServiceProvider(),
-            applicationServices
+            applicationServices,
+            loggerMock.Object
         );
     }
 
@@ -193,7 +196,7 @@ public class ShellContainerFactoryTests
         {
             Settings = new ShellSettings(),
             Descriptor = new ShellDescriptor(),
-            Dependencies = new Dictionary<Type, IEnumerable<IFeatureInfo>>()
+            Dependencies = new Dictionary<Type, IEnumerable<IFeatureInfo>>(),
         };
     }
 

@@ -4,22 +4,22 @@ using Microsoft.Extensions.Options;
 using OrchardCore.Admin;
 using OrchardCore.AdminMenu.Services;
 using OrchardCore.Navigation;
+using OrchardCore.Security.Permissions;
 
 namespace OrchardCore.AdminMenu.AdminNodes;
 
 public class LinkAdminNodeNavigationBuilder : IAdminNodeNavigationBuilder
 {
     private readonly ILogger _logger;
-    private readonly IAdminMenuPermissionService _adminMenuPermissionService;
+    private readonly IPermissionService _permissionService;
     private readonly AdminOptions _adminOptions;
 
-
     public LinkAdminNodeNavigationBuilder(
-        IAdminMenuPermissionService adminMenuPermissionService,
+        IPermissionService permissionService,
         IOptions<AdminOptions> adminOptions,
         ILogger<LinkAdminNodeNavigationBuilder> logger)
     {
-        _adminMenuPermissionService = adminMenuPermissionService;
+        _permissionService = permissionService;
         _adminOptions = adminOptions.Value;
         _logger = logger;
     }
@@ -54,6 +54,7 @@ public class LinkAdminNodeNavigationBuilder : IAdminNodeNavigationBuilder
             }
 
             // Add the actual link.
+            itemBuilder.MenuName(node.MenuName);
             itemBuilder.Url(nodeLinkUrl);
             itemBuilder.Target(node.Target);
             itemBuilder.Priority(node.Priority);
@@ -61,11 +62,8 @@ public class LinkAdminNodeNavigationBuilder : IAdminNodeNavigationBuilder
 
             if (node.PermissionNames.Length > 0)
             {
-                var permissions = await _adminMenuPermissionService.GetPermissionsAsync();
-
                 // Find the actual permissions and apply them to the menu.
-                var selectedPermissions = permissions.Where(p => node.PermissionNames.Contains(p.Name));
-                itemBuilder.Permissions(selectedPermissions);
+                itemBuilder.Permissions(await _permissionService.FindByNamesAsync(node.PermissionNames));
             }
 
             // Add adminNode's IconClass property values to menuItem.Classes.

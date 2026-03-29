@@ -3,6 +3,7 @@ using OrchardCore.Scripting;
 using OrchardCore.Tests.Apis.Context;
 
 namespace OrchardCore.Tests.Scripting;
+
 public class ScriptFunctionsTest
 {
     [Fact]
@@ -40,7 +41,7 @@ public class ScriptFunctionsTest
                     """;
 
                     return JObject.Parse(jsonData);
-                }
+                },
             };
 
             var scriptingEngine = scope.ServiceProvider.GetRequiredService<IScriptingEngine>();

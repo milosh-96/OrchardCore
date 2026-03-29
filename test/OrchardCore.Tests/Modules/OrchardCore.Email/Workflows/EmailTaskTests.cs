@@ -1,5 +1,5 @@
 using OrchardCore.Email;
-using OrchardCore.Email.Core.Services;
+using OrchardCore.Email.Services;
 using OrchardCore.Email.Smtp.Services;
 using OrchardCore.Email.Workflows.Activities;
 using OrchardCore.Workflows.Models;
@@ -27,7 +27,7 @@ public class EmailTaskTests
             HtmlEncoder.Default)
         {
             Subject = new WorkflowExpression<string>("Test"),
-            Body = new WorkflowExpression<string>("Test message!!")
+            TextBody = new WorkflowExpression<string>("Test message!!"),
         };
 
         var executionContext = new WorkflowExecutionContext(
